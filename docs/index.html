@@ -187,6 +187,34 @@
             color: var(--color-white);
         }
 
+        .sync-indicator {
+            font-size: 0.75rem;
+            color: var(--color-grey);
+            margin-left: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .sync-indicator.sync-ok { color: var(--ampel-green); }
+        .sync-indicator.sync-error { color: var(--ampel-red); }
+        .sync-indicator.sync-offline { color: var(--color-grey); }
+
+        .sync-token-btn {
+            padding: 0.25rem 0.7rem;
+            border: 1px solid #c3cde4;
+            background: var(--color-white);
+            color: var(--color-primary);
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            margin-left: 0.35rem;
+        }
+
+        .sync-token-btn:hover {
+            border-color: var(--color-primary);
+            background: #eef2fb;
+        }
+
         /* Min-Relevanz-Slider */
         .score-slider-wrap {
             display: flex;
@@ -749,6 +777,8 @@
             <button class="filter-btn status-btn" data-status="weitergeleitet">Weitergeleitet</button>
             <button class="filter-btn status-btn" data-status="beworben">Beworben</button>
             <button class="filter-btn status-btn" data-status="verworfen">Verworfen</button>
+            <span class="sync-indicator" id="syncIndicator">wird geladen&hellip;</span>
+            <button class="sync-token-btn" id="syncTokenBtn" title="GitHub-Zugang f&uuml;r geteilten Status einrichten">GitHub-Zugang</button>
         </div>
 
         <div class="toolbar-row">
@@ -10868,13 +10898,160 @@
             }
         }
 
-        /* ---------- Status-Workflow (localStorage) ---------- */
+        /* ---------- Status-Workflow (geteilt via GitHub, localStorage als Cache) ---------- */
+
+        var GH_OWNER = 'KaempfRP';
+        var GH_REPO = 'RP--KK';
+        var GH_BRANCH = 'main';
+        var GH_STATUS_PATH = 'data/status.json';
+        var GH_TOKEN_KEY = 'tenderScoutGhToken';
+
+        var RemoteStatus = { data: {}, sha: null, loaded: false };
 
         function statusKey(id) {
             return 'tenderStatus:' + id;
         }
 
+        function getGhToken() {
+            try {
+                return localStorage.getItem(GH_TOKEN_KEY) || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function setGhToken(token) {
+            try {
+                if (token) { localStorage.setItem(GH_TOKEN_KEY, token); }
+                else { localStorage.removeItem(GH_TOKEN_KEY); }
+            } catch (e) { /* ignore */ }
+        }
+
+        function promptForToken() {
+            var current = getGhToken();
+            var msg = 'GitHub Personal Access Token fuer geteilten Status.\n\n' +
+                'Fine-grained Token unter github.com/settings/tokens, Zugriff nur auf\n' +
+                GH_OWNER + '/' + GH_REPO + ', Permission "Contents: Read and write".\n\n' +
+                'Feld leeren + OK entfernt den Zugang (Status wird dann nur lokal\n' +
+                'in diesem Browser gespeichert, nicht mehr geteilt).';
+            var answer = window.prompt(msg, current);
+            if (answer === null) { return; }
+            setGhToken(answer.trim());
+            updateSyncIndicator();
+        }
+
+        function updateSyncIndicator(state, detail) {
+            var el = document.getElementById('syncIndicator');
+            if (!el) { return; }
+            var hasToken = !!getGhToken();
+            if (state === 'loading') {
+                el.textContent = 'wird geladen…';
+                el.className = 'sync-indicator';
+            } else if (state === 'saving') {
+                el.textContent = 'speichert…';
+                el.className = 'sync-indicator';
+            } else if (state === 'error') {
+                el.textContent = '⚠ ' + (detail || 'Fehler beim Speichern');
+                el.className = 'sync-indicator sync-error';
+            } else if (!hasToken) {
+                el.textContent = '○ nur lokal gespeichert (kein Zugang)';
+                el.className = 'sync-indicator sync-offline';
+            } else {
+                el.textContent = '✓ geteilter Status aktiv';
+                el.className = 'sync-indicator sync-ok';
+            }
+        }
+
+        function decodeBase64Utf8(b64) {
+            try {
+                return decodeURIComponent(escape(window.atob(b64.replace(/\n/g, ''))));
+            } catch (e) {
+                return '{}';
+            }
+        }
+
+        function encodeUtf8Base64(str) {
+            return window.btoa(unescape(encodeURIComponent(str)));
+        }
+
+        function fetchRemoteStatusFile(withAuth) {
+            var url = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO +
+                '/contents/' + GH_STATUS_PATH + '?ref=' + GH_BRANCH + '&_=' + Date.now();
+            var headers = { 'Accept': 'application/vnd.github+json' };
+            var token = getGhToken();
+            if (withAuth && token) { headers['Authorization'] = 'Bearer ' + token; }
+            return fetch(url, { headers: headers }).then(function(res) {
+                if (res.status === 404) { return { data: {}, sha: null }; }
+                if (!res.ok) { throw new Error('HTTP ' + res.status); }
+                return res.json().then(function(json) {
+                    var data = {};
+                    try { data = JSON.parse(decodeBase64Utf8(json.content)); } catch (e) { /* keep empty */ }
+                    return { data: data, sha: json.sha };
+                });
+            });
+        }
+
+        function loadRemoteStatus() {
+            updateSyncIndicator('loading');
+            return fetchRemoteStatusFile(false).then(function(result) {
+                RemoteStatus.data = result.data || {};
+                RemoteStatus.sha = result.sha;
+                RemoteStatus.loaded = true;
+                updateSyncIndicator();
+            }).catch(function() {
+                RemoteStatus.loaded = true;
+                updateSyncIndicator('error', 'Laden fehlgeschlagen – zeige lokalen Stand');
+            });
+        }
+
+        function pushRemoteStatus(id, record, attempt) {
+            var token = getGhToken();
+            if (!token) { updateSyncIndicator(); return; }
+            attempt = attempt || 0;
+            updateSyncIndicator('saving');
+
+            fetchRemoteStatusFile(true).then(function(result) {
+                var merged = result.data || {};
+                merged[id] = record;
+                var content = encodeUtf8Base64(JSON.stringify(merged, null, 2));
+                var url = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + GH_STATUS_PATH;
+                var body = {
+                    message: 'Status: ' + id + ' -> ' + record.status,
+                    content: content,
+                    branch: GH_BRANCH
+                };
+                if (result.sha) { body.sha = result.sha; }
+
+                return fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Accept': 'application/vnd.github+json',
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                }).then(function(res) {
+                    if (res.status === 409 && attempt < 2) {
+                        return pushRemoteStatus(id, record, attempt + 1);
+                    }
+                    if (!res.ok) {
+                        return res.json().catch(function() { return {}; }).then(function(errBody) {
+                            throw new Error(errBody.message || ('HTTP ' + res.status));
+                        });
+                    }
+                    return res.json().then(function(json) {
+                        RemoteStatus.data = merged;
+                        RemoteStatus.sha = json.content && json.content.sha;
+                        updateSyncIndicator();
+                    });
+                });
+            }).catch(function(err) {
+                updateSyncIndicator('error', (err && err.message) || 'Speichern fehlgeschlagen');
+            });
+        }
+
         function loadStatus(id) {
+            if (RemoteStatus.data && RemoteStatus.data[id]) { return RemoteStatus.data[id]; }
             try {
                 var raw = localStorage.getItem(statusKey(id));
                 return raw ? JSON.parse(raw) : null;
@@ -10889,9 +11066,11 @@
                 ts: new Date().toISOString(),
                 forwardedTo: forwardedTo || ''
             };
+            RemoteStatus.data[id] = record;
             try {
                 localStorage.setItem(statusKey(id), JSON.stringify(record));
             } catch (e) { /* storage full/blocked — status stays for the session via DOM */ }
+            pushRemoteStatus(id, record);
             return record;
         }
 
@@ -11391,9 +11570,22 @@
             });
         }
 
+        var syncTokenBtn = document.getElementById('syncTokenBtn');
+        if (syncTokenBtn) {
+            syncTokenBtn.addEventListener('click', function() {
+                promptForToken();
+            });
+        }
+
+        updateSyncIndicator();
         initStatusWorkflow();
         initPdfButtons();
         applyFilters();
+
+        loadRemoteStatus().then(function() {
+            initStatusWorkflow();
+            applyFilters();
+        });
     </script>
 </body>
 </html>
