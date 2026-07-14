@@ -1,0 +1,47 @@
+name: Tender Scout – Update
+
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'   # Mo–Fr, 06:00 UTC (08:00 deutscher Zeit)
+  workflow_dispatch:          # Manueller Start jederzeit möglich
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'templates/**'
+      - 'main.py'
+      - 'requirements.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Dependencies installieren
+        run: pip install -r requirements.txt
+
+      - name: Smoke Tests
+        run: pytest -m smoke
+
+      - name: Scout ausführen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python main.py
+
+      - name: Änderungen committen
+        run: |
+          git config user.name "tender-scout-bot"
+          git config user.email "bot@reqpool.de"
+          git add docs/index.html data/seen.db
+          git diff --staged --quiet || git commit -m "Update: $(date +'%Y-%m-%d %H:%M')"
+          git push

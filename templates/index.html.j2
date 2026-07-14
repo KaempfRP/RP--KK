@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReqPOOL Ausschreibungs-Scout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #002EB1;
+            --color-primary-dark: #001F78;
+            --color-secondary: #12855A;
+            --color-accent-green: #63F185;
+            --color-accent-blue: #0D4FC4;
+            --color-grey: #44585E;
+            --color-black: #000000;
+            --color-white: #FFFFFF;
+            --color-surface: #f5f7fa;
+            --color-border: #dfe4ec;
+            --ampel-red: #C22F2F;
+            --ampel-yellow: #B97A00;
+            --ampel-green: #12855A;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--color-black);
+            background: #f7f9fc;
+            line-height: 1.5;
+        }
+
+        .header {
+            background: linear-gradient(120deg, var(--color-primary-dark) 0%, var(--color-primary) 55%, #0A45C2 100%);
+            color: var(--color-white);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            font-size: 0.95rem;
+            opacity: 0.92;
+            font-weight: 400;
+        }
+
+        .header .updated {
+            font-size: 0.85rem;
+            opacity: 0.92;
+        }
+
+        .stats {
+            background: var(--color-white);
+            padding: 1rem 2rem;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .stat-item {
+            font-size: 0.95rem;
+            color: var(--color-grey);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .stat-item::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            flex-shrink: 0;
+        }
+
+        .stat-item.stat-new::before {
+            background: var(--color-secondary);
+        }
+
+        .stat-item strong {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+
+        .stat-new strong {
+            color: var(--color-secondary);
+        }
+
+        /* Toolbar */
+        .toolbar {
+            margin: 1.25rem 2rem;
+            padding: 1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(16, 34, 71, 0.05);
+        }
+
+        .toolbar-row {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .toolbar-row > label,
+        .toolbar-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-grey);
+            margin-right: 0.25rem;
+        }
+
+        .search-input {
+            border: 1px solid var(--color-primary);
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            width: 100%;
+            max-width: 400px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .search-input:focus {
+            box-shadow: 0 0 0 2px rgba(0, 46, 177, 0.2);
+        }
+
+        .search-clear {
+            background: none;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--color-grey);
+            font-family: inherit;
+            display: none;
+        }
+
+        .search-clear.visible {
+            display: inline-block;
+        }
+
+        .filter-btn, .sort-btn {
+            padding: 0.35rem 0.9rem;
+            border: 1px solid #c3cde4;
+            background: var(--color-white);
+            color: var(--color-primary);
+            border-radius: 999px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+
+        .filter-btn:hover, .sort-btn:hover {
+            border-color: var(--color-primary);
+            background: #eef2fb;
+        }
+
+        .filter-btn.active, .sort-btn.active {
+            background: var(--color-primary);
+            border-color: var(--color-primary);
+            color: var(--color-white);
+        }
+
+        /* Min-Relevanz-Slider */
+        .score-slider-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .score-slider {
+            width: 140px;
+            accent-color: var(--color-primary);
+        }
+
+        .score-slider-value {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            min-width: 2.5rem;
+        }
+
+        .toggle-expired {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.85rem;
+            color: var(--color-grey);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-expired input {
+            accent-color: var(--color-primary);
+        }
+
+        .visible-count {
+            color: var(--color-grey);
+            font-size: 0.85rem;
+            margin-left: auto;
+        }
+
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 0 2rem 2rem;
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(16, 34, 71, 0.05);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: var(--color-primary);
+            color: var(--color-white);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        tbody td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid #ebeff6;
+            vertical-align: top;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #f4f7fd;
+        }
+
+        tr.status-verworfen td {
+            opacity: 0.45;
+        }
+
+        .badge-neu {
+            display: inline-block;
+            background: var(--color-secondary);
+            color: var(--color-white);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.15rem 0.55rem;
+            border-radius: 999px;
+            text-transform: uppercase;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .badge-relevant {
+            display: none;
+            background: var(--color-secondary);
+            color: var(--color-white);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            margin-left: 0.3rem;
+            vertical-align: middle;
+        }
+
+        .source-tag {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-primary-dark);
+            background: #e8edf9;
+            border-radius: 3px;
+            padding: 0.1rem 0.45rem;
+            white-space: nowrap;
+        }
+
+        .sector-tag {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--color-grey);
+            margin-top: 0.2rem;
+            white-space: nowrap;
+        }
+
+        a {
+            color: var(--color-accent-blue);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .link-btn {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--color-accent-blue);
+            color: var(--color-white);
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-decoration: none;
+            margin-bottom: 0.25rem;
+        }
+
+        .link-btn:hover {
+            opacity: 0.9;
+            text-decoration: none;
+        }
+
+        .pdf-btn {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            background: var(--color-white);
+            color: var(--color-primary);
+            border: 1px solid var(--color-primary);
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .pdf-btn:hover {
+            background: var(--color-primary);
+            color: var(--color-white);
+        }
+
+        /* Relevance */
+        .relevance-cell {
+            min-width: 120px;
+        }
+
+        .relevance-bar {
+            display: inline-block;
+            width: 50px;
+            height: 6px;
+            background: var(--color-border);
+            border-radius: 3px;
+            vertical-align: middle;
+            margin-right: 0.3rem;
+        }
+
+        .relevance-fill {
+            display: block;
+            height: 100%;
+            border-radius: 3px;
+            background: var(--color-secondary);
+        }
+
+        .relevance-high .relevance-fill {
+            background: var(--color-accent-green);
+        }
+
+        .relevance-score {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            vertical-align: middle;
+        }
+
+        .relevance-zero {
+            color: var(--color-grey);
+            opacity: 0.6;
+        }
+
+        .relevance-tags {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--color-grey);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+            margin-top: 0.15rem;
+        }
+
+        /* Frist-Ampel */
+        .deadline-cell {
+            white-space: nowrap;
+        }
+
+        .deadline-badge {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.12rem 0.55rem;
+            border-radius: 999px;
+            color: var(--color-white);
+            margin-bottom: 0.15rem;
+        }
+
+        .deadline-red { background: var(--ampel-red); }
+        .deadline-yellow { background: var(--ampel-yellow); }
+        .deadline-green { background: var(--ampel-green); }
+        .deadline-expired {
+            background: var(--color-surface);
+            color: var(--color-grey);
+            border: 1px solid var(--color-border);
+        }
+        .deadline-none {
+            color: var(--color-grey);
+            opacity: 0.6;
+        }
+
+        .deadline-date {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--color-grey);
+        }
+
+        /* Status-Workflow */
+        .status-cell {
+            min-width: 150px;
+        }
+
+        .status-select {
+            font-family: inherit;
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 0.2rem 0.3rem;
+            border-radius: 4px;
+            border: 1px solid var(--color-border);
+            cursor: pointer;
+            background: var(--color-white);
+            color: var(--color-black);
+        }
+
+        .status-select.st-neu { border-color: var(--color-primary); color: var(--color-primary); }
+        .status-select.st-geprueft { border-color: #6A41B5; color: #6A41B5; }
+        .status-select.st-weitergeleitet { border-color: var(--ampel-yellow); color: var(--ampel-yellow); }
+        .status-select.st-beworben { border-color: var(--ampel-green); color: var(--ampel-green); background: #edfaf3; }
+        .status-select.st-verworfen { border-color: var(--color-grey); color: var(--color-grey); }
+
+        .status-meta {
+            display: block;
+            font-size: 0.68rem;
+            color: var(--color-grey);
+            margin-top: 0.2rem;
+            max-width: 170px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Summary */
+        .summary-toggle {
+            background: none;
+            border: 1px solid var(--color-primary);
+            color: var(--color-primary);
+            border-radius: 3px;
+            padding: 0.1rem 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            margin-left: 0.4rem;
+            vertical-align: middle;
+        }
+
+        .summary-toggle:hover {
+            background: var(--color-primary);
+            color: var(--color-white);
+        }
+
+        .summary-row {
+            display: none;
+        }
+
+        .summary-row.visible {
+            display: table-row;
+        }
+
+        .summary-row td {
+            padding: 0;
+            border-bottom: none;
+        }
+
+        .summary-card {
+            margin: 0 0.5rem 0.5rem;
+            border: 1px solid #dde3ed;
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--color-white);
+            box-shadow: 0 2px 8px rgba(0, 46, 177, 0.06);
+        }
+
+        .summary-header {
+            background: var(--color-primary);
+            color: var(--color-white);
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .summary-header .ai-badge {
+            background: var(--color-white);
+            color: var(--color-primary);
+            padding: 0.1rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            font-weight: 700;
+        }
+
+        .summary-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0;
+        }
+
+        .summary-section {
+            padding: 0.75rem 1rem;
+            border-right: 1px solid #eef1f6;
+        }
+
+        .summary-section:last-child {
+            border-right: none;
+        }
+
+        .summary-icon-label {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .summary-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .summary-dot.chance { background: var(--color-primary); }
+        .summary-dot.empfehlung { background: var(--color-secondary); }
+        .summary-dot.schritt { background: var(--color-accent-blue); }
+
+        .summary-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--color-grey);
+        }
+
+        .summary-text {
+            font-size: 0.82rem;
+            color: #1a2332;
+            line-height: 1.55;
+        }
+
+        .summary-fit {
+            margin-left: auto;
+            font-size: 0.7rem;
+        }
+
+        @media (max-width: 768px) {
+            .summary-body {
+                grid-template-columns: 1fr;
+            }
+            .summary-section {
+                border-right: none;
+                border-bottom: 1px solid #eef1f6;
+            }
+            .summary-section:last-child {
+                border-bottom: none;
+            }
+        }
+
+        .refresh-btn {
+            display: inline-block;
+            margin-left: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            background: var(--color-white);
+            color: var(--color-primary);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .refresh-btn:hover {
+            opacity: 0.9;
+            text-decoration: none;
+            color: var(--color-primary);
+        }
+
+        .footer {
+            background: var(--color-surface);
+            color: var(--color-grey);
+            text-align: center;
+            padding: 1rem 2rem;
+            font-size: 0.8rem;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--color-grey);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .stats {
+                padding: 0.75rem 1rem;
+                gap: 1rem;
+            }
+
+            .toolbar {
+                margin: 0.75rem 0.5rem;
+                padding: 0.75rem 1rem;
+            }
+
+            .search-input {
+                max-width: 100%;
+            }
+
+            .table-wrapper {
+                margin: 0 0.5rem 1rem;
+            }
+
+            thead th, tbody td {
+                padding: 0.5rem 0.5rem;
+                font-size: 0.8rem;
+            }
+
+            .hide-mobile {
+                display: none;
+            }
+
+            .badge-relevant {
+                display: inline-block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div>
+            <h1>ReqPOOL Ausschreibungs-Scout</h1>
+            <div class="subtitle">Energie &amp; IT</div>
+        </div>
+        <div class="updated">
+            Aktualisiert: {{ updated_at }}
+            <a class="refresh-btn" href="https://github.com/Luca144/tender/actions/workflows/cron.yml" target="_blank" rel="noopener" title="Jetzt aktualisieren via GitHub Actions">&#x21BB; Jetzt aktualisieren</a>
+        </div>
+    </header>
+
+    <div class="stats">
+        <div class="stat-item">
+            Gesamt <strong>{{ total_count }}</strong> Ausschreibungen
+        </div>
+        <div class="stat-item">
+            Relevant <strong>{{ relevant_count }}</strong>
+        </div>
+        <div class="stat-item stat-new">
+            <strong>{{ new_count }}</strong> neu heute
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="toolbar-row">
+            <input type="text" class="search-input" placeholder="Suche in Titel, Auftraggeber..." aria-label="Suche">
+            <button class="search-clear" title="Suche leeren">&#x2715;</button>
+        </div>
+
+        <div class="toolbar-row">
+            <label>Branche:</label>
+            <button class="filter-btn sector-btn active" data-sector="all">Alle</button>
+            {% for sector in sectors %}
+            <button class="filter-btn sector-btn" data-sector="{{ sector }}">{{ sector }}</button>
+            {% endfor %}
+        </div>
+
+        <div class="toolbar-row">
+            <label>Quellen:</label>
+            <button class="filter-btn source-btn active" data-source="all">Alle</button>
+            {% for source in sources %}
+            <button class="filter-btn source-btn" data-source="{{ source }}">{{ source }}</button>
+            {% endfor %}
+        </div>
+
+        <div class="toolbar-row">
+            <label>Status:</label>
+            <button class="filter-btn status-btn active" data-status="all">Alle</button>
+            <button class="filter-btn status-btn" data-status="neu">Neu</button>
+            <button class="filter-btn status-btn" data-status="geprueft">Gepr&uuml;ft</button>
+            <button class="filter-btn status-btn" data-status="weitergeleitet">Weitergeleitet</button>
+            <button class="filter-btn status-btn" data-status="beworben">Beworben</button>
+            <button class="filter-btn status-btn" data-status="verworfen">Verworfen</button>
+        </div>
+
+        <div class="toolbar-row">
+            <span class="toolbar-label">Min. Relevanz:</span>
+            <span class="score-slider-wrap">
+                <input type="range" class="score-slider" min="0" max="100" step="5" value="5" aria-label="Minimale Relevanz">
+                <span class="score-slider-value">&ge; 5</span>
+            </span>
+            <label class="toggle-expired">
+                <input type="checkbox" class="expired-checkbox" checked>
+                Abgelaufene Fristen ausblenden
+            </label>
+        </div>
+
+        <div class="toolbar-row">
+            <label>Sortierung:</label>
+            <button class="sort-btn active" data-sort="relevance">Relevanz <span class="sort-arrow">&#x25BC;</span></button>
+            <button class="sort-btn" data-sort="date">Datum <span class="sort-arrow">&#x25BC;</span></button>
+            <button class="sort-btn" data-sort="deadline">Frist <span class="sort-arrow">&#x25B2;</span></button>
+            <span class="visible-count">Zeige: {{ total_count }} von {{ total_count }}</span>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        {% if all_entries %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Quelle</th>
+                    <th>Titel</th>
+                    <th class="hide-mobile">Relevanz</th>
+                    <th class="hide-mobile">Auftraggeber</th>
+                    <th class="hide-mobile">Datum</th>
+                    <th>Frist</th>
+                    <th>Status</th>
+                    <th>Aktion</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in all_entries %}
+                <tr data-id="{{ entry.id }}"
+                    data-source="{{ entry.source }}"
+                    data-sector="{{ entry.sector | default('Sonstige') }}"
+                    data-score="{{ entry.relevance_score }}"
+                    data-published="{{ entry.published_iso }}"
+                    data-deadline="{{ entry.deadline_iso | default('') }}"
+                    data-days-left="{{ entry.days_left if entry.days_left is not none else '' }}"
+                    data-status="neu"{% if entry.summary %}
+                    data-summary='{{ entry.summary | tojson }}'{% endif %}>
+                    <td><span class="source-tag">{{ entry.source }}</span></td>
+                    <td>
+                        <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
+                        {% if entry.id in new_ids %}<span class="badge-neu">NEU</span>{% endif %}
+                        {% if entry.relevance_score >= 50 %}<span class="badge-relevant">{{ entry.relevance_score }}%</span>{% endif %}
+                        {% if entry.summary %}<button class="summary-toggle" onclick="toggleSummary('summary-{{ loop.index }}')" title="Management Summary anzeigen">KI</button>{% endif %}
+                    </td>
+                    <td class="hide-mobile relevance-cell">
+                        {% if entry.relevance_score > 0 %}
+                        <span class="relevance-bar{% if entry.relevance_score >= 60 %} relevance-high{% endif %}">
+                            <span class="relevance-fill" style="width: {{ entry.relevance_score }}%"></span>
+                        </span>
+                        <span class="relevance-score">{{ entry.relevance_score }}</span>
+                        {% if entry.matched_roles %}
+                        <span class="relevance-tags" title="{{ entry.matched_roles | join(', ') }}">
+                            {{ entry.matched_roles[:2] | join(', ') }}{% if entry.matched_roles | length > 2 %} +{{ entry.matched_roles | length - 2 }}{% endif %}
+                        </span>
+                        {% endif %}
+                        {% else %}
+                        <span class="relevance-score relevance-zero">–</span>
+                        {% endif %}
+                    </td>
+                    <td class="hide-mobile">
+                        {{ entry.buyer }}
+                        <span class="sector-tag">{{ entry.sector | default('Sonstige') }}{% if entry.buyer_type and entry.buyer_type != 'Sonstige' %} &middot; {{ entry.buyer_type }}{% endif %}</span>
+                    </td>
+                    <td class="hide-mobile">{{ entry.published }}</td>
+                    <td class="deadline-cell">
+                        {% if entry.days_left is not none %}
+                            {% if entry.days_left < 0 %}
+                            <span class="deadline-badge deadline-expired">abgelaufen</span>
+                            {% elif entry.days_left < 7 %}
+                            <span class="deadline-badge deadline-red">{{ entry.days_left }} Tage</span>
+                            {% elif entry.days_left < 14 %}
+                            <span class="deadline-badge deadline-yellow">{{ entry.days_left }} Tage</span>
+                            {% else %}
+                            <span class="deadline-badge deadline-green">{{ entry.days_left }} Tage</span>
+                            {% endif %}
+                            <span class="deadline-date">{{ entry.deadline }}</span>
+                        {% else %}
+                            <span class="deadline-none">–</span>
+                        {% endif %}
+                    </td>
+                    <td class="status-cell">
+                        <select class="status-select st-neu" aria-label="Bearbeitungsstatus">
+                            <option value="neu" selected>Neu</option>
+                            <option value="geprueft">Gepr&uuml;ft</option>
+                            <option value="weitergeleitet">Weitergeleitet</option>
+                            <option value="beworben">Beworben</option>
+                            <option value="verworfen">Verworfen</option>
+                        </select>
+                        <span class="status-meta"></span>
+                    </td>
+                    <td>
+                        {% if entry.url %}
+                        <a class="link-btn" href="{{ entry.url }}" target="_blank" rel="noopener">Öffnen</a>
+                        {% endif %}
+                        <button class="pdf-btn" title="Einseiten-PDF erzeugen">PDF</button>
+                    </td>
+                </tr>
+                {% if entry.summary %}
+                <tr class="summary-row" id="summary-{{ loop.index }}" data-source="{{ entry.source }}">
+                    <td colspan="8">
+                        <div class="summary-card">
+                            <div class="summary-header">
+                                <span class="ai-badge">KI</span>
+                                Management Summary
+                                {% if entry.summary.fit_score %}<span class="summary-fit">ReqPOOL Fit: {{ entry.summary.fit_score }}%</span>{% endif %}
+                            </div>
+                            <div class="summary-body">
+                                <div class="summary-section">
+                                    <div class="summary-icon-label">
+                                        <span class="summary-dot chance"></span>
+                                        <span class="summary-label">Was wird gesucht?</span>
+                                    </div>
+                                    <div class="summary-text">{{ entry.summary.was_gesucht or entry.summary.chance or '–' }}</div>
+                                </div>
+                                <div class="summary-section">
+                                    <div class="summary-icon-label">
+                                        <span class="summary-dot empfehlung"></span>
+                                        <span class="summary-label">Empfehlung</span>
+                                    </div>
+                                    <div class="summary-text">{{ entry.summary.empfehlung or '–' }}</div>
+                                </div>
+                                <div class="summary-section">
+                                    <div class="summary-icon-label">
+                                        <span class="summary-dot schritt"></span>
+                                        <span class="summary-label">Relevanz für ReqPOOL</span>
+                                    </div>
+                                    <div class="summary-text">{{ entry.summary.relevanz or entry.summary.naechster_schritt or '–' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p>Keine Ausschreibungen gefunden.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer class="footer">
+        Automatisch aktualisiert via GitHub Actions &middot; ReqPOOL GmbH
+    </footer>
+
+    <script>
+        var TenderScout = {
+            activeSource: 'all',
+            activeSector: 'all',
+            activeStatus: 'all',
+            activeSort: 'relevance',
+            sortDirection: 'desc',
+            searchTerm: '',
+            minScore: 5,
+            hideExpired: true
+        };
+
+        var STATUS_LABELS = {
+            neu: 'Neu',
+            geprueft: 'Geprüft',
+            weitergeleitet: 'Weitergeleitet',
+            beworben: 'Beworben',
+            verworfen: 'Verworfen'
+        };
+
+        function toggleSummary(id) {
+            var row = document.getElementById(id);
+            if (row) {
+                row.classList.toggle('visible');
+            }
+        }
+
+        /* ---------- Status-Workflow (localStorage) ---------- */
+
+        function statusKey(id) {
+            return 'tenderStatus:' + id;
+        }
+
+        function loadStatus(id) {
+            try {
+                var raw = localStorage.getItem(statusKey(id));
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function saveStatus(id, status, forwardedTo) {
+            var record = {
+                status: status,
+                ts: new Date().toISOString(),
+                forwardedTo: forwardedTo || ''
+            };
+            try {
+                localStorage.setItem(statusKey(id), JSON.stringify(record));
+            } catch (e) { /* storage full/blocked — status stays for the session via DOM */ }
+            return record;
+        }
+
+        function formatTs(iso) {
+            if (!iso) return '';
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+            return pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' +
+                   d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+
+        function applyStatusToRow(row, record) {
+            var select = row.querySelector('.status-select');
+            var meta = row.querySelector('.status-meta');
+            var status = (record && record.status) || 'neu';
+            row.setAttribute('data-status', status);
+            row.classList.toggle('status-verworfen', status === 'verworfen');
+            if (select) {
+                select.value = status;
+                select.className = 'status-select st-' + status;
+            }
+            if (meta) {
+                var parts = [];
+                if (record && record.ts) parts.push(formatTs(record.ts));
+                if (record && record.forwardedTo) parts.push('an ' + record.forwardedTo);
+                meta.textContent = parts.join(' · ');
+                meta.title = meta.textContent;
+            }
+        }
+
+        function initStatusWorkflow() {
+            var rows = document.querySelectorAll('tbody tr:not(.summary-row)');
+            for (var i = 0; i < rows.length; i++) {
+                (function(row) {
+                    var id = row.getAttribute('data-id');
+                    var record = loadStatus(id);
+                    if (record) applyStatusToRow(row, record);
+                    var select = row.querySelector('.status-select');
+                    if (!select) return;
+                    select.addEventListener('change', function() {
+                        var status = this.value;
+                        var forwardedTo = '';
+                        var previous = loadStatus(id);
+                        if (status === 'weitergeleitet') {
+                            var answer = window.prompt('An wen intern weitergeleitet?', (previous && previous.forwardedTo) || '');
+                            if (answer === null) {
+                                // Abbrechen gedrückt → Statuswechsel verwerfen
+                                applyStatusToRow(row, previous);
+                                return;
+                            }
+                            forwardedTo = answer.trim();
+                        } else if (previous && previous.forwardedTo) {
+                            forwardedTo = previous.forwardedTo;
+                        }
+                        var rec = saveStatus(id, status, forwardedTo);
+                        applyStatusToRow(row, rec);
+                        applyFilters();
+                    });
+                })(rows[i]);
+            }
+        }
+
+        /* ---------- PDF pro Ausschreibung ---------- */
+
+        function esc(text) {
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(text || ''));
+            return div.innerHTML;
+        }
+
+        function collectRowData(row) {
+            var titleLink = row.querySelector('td:nth-child(2) a');
+            var buyerCell = row.querySelector('td:nth-child(4)');
+            var buyer = '', sectorInfo = '';
+            if (buyerCell) {
+                var sectorTag = buyerCell.querySelector('.sector-tag');
+                sectorInfo = sectorTag ? sectorTag.textContent.trim() : '';
+                buyer = buyerCell.childNodes[0] ? buyerCell.childNodes[0].textContent.trim() : '';
+            }
+            var publishedCell = row.querySelector('td:nth-child(5)');
+            var deadlineDate = row.querySelector('.deadline-date');
+            var deadlineBadge = row.querySelector('.deadline-badge');
+            var rolesEl = row.querySelector('.relevance-tags');
+            var statusRecord = loadStatus(row.getAttribute('data-id'));
+            var statusLine = STATUS_LABELS[(statusRecord && statusRecord.status) || 'neu'];
+            if (statusRecord && statusRecord.forwardedTo) statusLine += ' an ' + statusRecord.forwardedTo;
+            if (statusRecord && statusRecord.ts) statusLine += ' (' + formatTs(statusRecord.ts) + ')';
+
+            // Optional KI-Summary from the adjacent summary row
+            var summary = null;
+            var next = row.nextElementSibling;
+            if (next && next.classList.contains('summary-row')) {
+                summary = [];
+                var sections = next.querySelectorAll('.summary-section');
+                for (var i = 0; i < sections.length; i++) {
+                    var label = sections[i].querySelector('.summary-label');
+                    var text = sections[i].querySelector('.summary-text');
+                    if (label && text) {
+                        summary.push({ label: label.textContent, text: text.textContent });
+                    }
+                }
+                var fit = next.querySelector('.summary-fit');
+                if (fit) summary.fit = fit.textContent.trim();
+            }
+
+            return {
+                title: titleLink ? titleLink.textContent : '',
+                url: titleLink ? titleLink.href : '',
+                source: row.getAttribute('data-source') || '',
+                buyer: buyer,
+                sectorInfo: sectorInfo,
+                published: publishedCell ? publishedCell.textContent.trim() : '',
+                deadline: (deadlineDate ? deadlineDate.textContent.trim() : '–') +
+                          (deadlineBadge ? ' (' + deadlineBadge.textContent.trim() + ')' : ''),
+                score: row.getAttribute('data-score') || '0',
+                roles: rolesEl ? (rolesEl.getAttribute('title') || rolesEl.textContent.trim()) : '',
+                statusLine: statusLine,
+                summary: summary
+            };
+        }
+
+        var PDF_STYLE =
+            'body{font-family:"IBM Plex Sans",-apple-system,sans-serif;color:#111;margin:2.5rem;line-height:1.5;}' +
+            'h1{font-size:1.25rem;color:#002EB1;margin-bottom:0.25rem;}' +
+            'h2{font-size:1.05rem;color:#002EB1;margin:1.5rem 0 0.5rem;page-break-after:avoid;}' +
+            '.sub{color:#44585E;font-size:0.85rem;margin-bottom:1.25rem;}' +
+            '.scorepill{display:inline-block;background:#002EB1;color:#fff;font-weight:700;border-radius:999px;padding:0.15rem 0.75rem;font-size:0.85rem;margin-left:0.5rem;vertical-align:middle;}' +
+            'table{border-collapse:collapse;width:100%;font-size:0.9rem;}' +
+            'th{text-align:left;padding:0.45rem 1rem 0.45rem 0;color:#44585E;white-space:nowrap;vertical-align:top;width:10rem;font-weight:600;}' +
+            'td{padding:0.45rem 0;vertical-align:top;}' +
+            'tr{border-bottom:1px solid #dfe4ec;}' +
+            'a{color:#0D4FC4;word-break:break-all;}' +
+            'p{margin:0.35rem 0;font-size:0.92rem;}' +
+            '.titleline{font-size:1.05rem;font-weight:600;margin:0.75rem 0 0.25rem;padding-bottom:0.6rem;border-bottom:2px solid #002EB1;}' +
+            '.lead{margin-top:0.75rem;font-weight:600;}' +
+            'ul{margin:0.35rem 0 0.75rem 1.25rem;padding:0;font-size:0.92rem;}' +
+            'li{margin:0.15rem 0;}' +
+            '.hint{color:#44585E;font-size:0.82rem;font-style:italic;}' +
+            '.footer{margin-top:2rem;font-size:0.75rem;color:#44585E;}';
+
+        function entryFactsHtml(d, compact) {
+            return '<table>' +
+                '<tr><th>Auftraggeber</th><td>' + esc(d.buyer) + '</td></tr>' +
+                (d.sectorInfo ? '<tr><th>Branche</th><td>' + esc(d.sectorInfo) + '</td></tr>' : '') +
+                '<tr><th>Quelle</th><td>' + esc(d.source) + '</td></tr>' +
+                '<tr><th>Ver&ouml;ffentlicht</th><td>' + esc(d.published) + '</td></tr>' +
+                '<tr><th>Frist</th><td>' + esc(d.deadline) + '</td></tr>' +
+                (d.roles ? '<tr><th>Passende Rollen</th><td>' + esc(d.roles) + '</td></tr>' : '') +
+                (compact ? '' : '<tr><th>Status</th><td>' + esc(d.statusLine) + '</td></tr>') +
+                (d.url ? '<tr><th>Link</th><td><a href="' + esc(d.url) + '">' + esc(d.url) + '</a></td></tr>' : '') +
+                '</table>';
+        }
+
+        function openPrintWindow(title, bodyHtml) {
+            var w = window.open('', '_blank');
+            if (!w) {
+                alert('Popup-Blocker verhindert die PDF-Erstellung. Bitte Popups für diese Seite erlauben.');
+                return;
+            }
+            w.document.write('<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">' +
+                '<title>' + esc(title) + '</title><style>' + PDF_STYLE + '</style></head><body>' +
+                bodyHtml +
+                '<div class="footer">Automatisch generiert &middot; ReqPOOL GmbH</div>' +
+                '<script>window.onload=function(){window.print();}<\/script>' +
+                '</body></html>');
+            w.document.close();
+        }
+
+        function kvTableHtml(obj) {
+            var html = '<table>';
+            for (var key in obj) {
+                if (obj.hasOwnProperty(key) && obj[key]) {
+                    html += '<tr><th>' + esc(key) + '</th><td>' + esc(String(obj[key])) + '</td></tr>';
+                }
+            }
+            return html + '</table>';
+        }
+
+        function listHtml(items) {
+            var html = '<ul>';
+            for (var i = 0; i < items.length; i++) {
+                html += '<li>' + esc(String(items[i])) + '</li>';
+            }
+            return html + '</ul>';
+        }
+
+        function makePdf(row) {
+            var d = collectRowData(row);
+            var summary = null;
+            if (row.getAttribute('data-summary')) {
+                try { summary = JSON.parse(row.getAttribute('data-summary')); } catch (e) {}
+            }
+
+            var idShort = row.getAttribute('data-id') || '';
+            var body = '<h1>Management Summary &mdash; ' + esc(d.source) + ' ' + esc(idShort) + '</h1>' +
+                '<div class="sub"><b>Auftraggeber:</b> ' + esc(d.buyer) +
+                (d.sectorInfo ? ' (' + esc(d.sectorInfo) + ')' : '') +
+                ' &middot; <b>Ver&ouml;ffentlicht:</b> ' + esc(d.published) +
+                ' &middot; Stand: ' + esc(formatTs(new Date().toISOString())) + '</div>' +
+                '<div class="titleline">' + esc(d.title) +
+                '<span class="scorepill">Relevanz ' + esc(d.score) + ' / 100</span></div>';
+
+            if (summary) {
+                var wasGesucht = summary.was_gesucht || summary.chance || '';
+                if (wasGesucht) {
+                    body += '<h2>Was wird gesucht?</h2><p>' + esc(wasGesucht) + '</p>';
+                }
+                if (summary.handlungsfelder && summary.handlungsfelder.length) {
+                    body += '<p class="lead">Konkrete Handlungsfelder:</p>' + listHtml(summary.handlungsfelder);
+                }
+
+                var eckdaten = {};
+                var hasEckdaten = false;
+                if (summary.eckdaten) {
+                    for (var k in summary.eckdaten) {
+                        if (summary.eckdaten.hasOwnProperty(k) && summary.eckdaten[k]) {
+                            eckdaten[k] = summary.eckdaten[k]; hasEckdaten = true;
+                        }
+                    }
+                }
+                if (d.roles) { eckdaten['Passende ReqPOOL-Rollen'] = d.roles; hasEckdaten = true; }
+                if (hasEckdaten) {
+                    body += '<h2>Eckdaten</h2>' + kvTableHtml(eckdaten);
+                }
+
+                var fristen = {};
+                var hasFristen = false;
+                if (summary.fristen) {
+                    for (var f in summary.fristen) {
+                        if (summary.fristen.hasOwnProperty(f) && summary.fristen[f]) {
+                            fristen[f] = summary.fristen[f]; hasFristen = true;
+                        }
+                    }
+                }
+                if (d.deadline && d.deadline.indexOf('–') !== 0) {
+                    var daysLeftAttr = row.getAttribute('data-days-left');
+                    var warn = daysLeftAttr !== '' && parseInt(daysLeftAttr, 10) < 7 ? ' ⚠️' : '';
+                    fristen['Frist (laut Portal)'] = d.deadline + warn;
+                    hasFristen = true;
+                }
+                if (hasFristen) {
+                    body += '<h2>Fristen</h2>' + kvTableHtml(fristen);
+                }
+
+                if (summary.zuschlagskriterien && summary.zuschlagskriterien.length) {
+                    body += '<h2>Zuschlagskriterien</h2><table>' +
+                        '<tr><th>Kriterium</th><td><b>Gewichtung</b></td></tr>';
+                    for (var z = 0; z < summary.zuschlagskriterien.length; z++) {
+                        var crit = summary.zuschlagskriterien[z];
+                        var name = Array.isArray(crit) ? crit[0] : String(crit);
+                        var weight = Array.isArray(crit) && crit.length > 1 ? crit[1] : '';
+                        body += '<tr><th>' + esc(String(name)) + '</th><td>' + esc(String(weight)) + '</td></tr>';
+                    }
+                    body += '</table>';
+                }
+
+                if (summary.eignung && summary.eignung.length) {
+                    body += '<h2>Eignungsanforderungen (Auswahl)</h2>' + listHtml(summary.eignung);
+                }
+
+                var relevanz = summary.relevanz || summary.naechster_schritt || '';
+                if (relevanz || summary.empfehlung) {
+                    body += '<h2>Relevanz f&uuml;r ReqPOOL?</h2>';
+                    if (relevanz) body += '<p>' + esc(relevanz) + '</p>';
+                    if (summary.empfehlung) body += '<p><b>Empfehlung:</b> ' + esc(summary.empfehlung) + '</p>';
+                }
+            } else {
+                // No AI summary available — plain fact sheet
+                body += '<h2>Eckdaten</h2>' + entryFactsHtml(d, false) +
+                    '<p class="hint">F&uuml;r diese Ausschreibung liegt (noch) keine KI-Summary vor. ' +
+                    'Summaries werden im t&auml;glichen Lauf f&uuml;r Eintr&auml;ge mit Relevanz &ge; 15 erzeugt.</p>';
+            }
+
+            if (d.url) {
+                body += '<h2>Link</h2><p><a href="' + esc(d.url) + '">' + esc(d.url) + '</a></p>';
+            }
+
+            openPrintWindow('Management Summary — ' + d.title, body);
+        }
+
+        function initPdfButtons() {
+            var buttons = document.querySelectorAll('.pdf-btn');
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].addEventListener('click', function() {
+                    var row = this.closest('tr');
+                    if (row) makePdf(row);
+                });
+            }
+        }
+
+        /* ---------- Filter & Sortierung ---------- */
+
+        function applyFilters() {
+            var rows = document.querySelectorAll('tbody tr:not(.summary-row)');
+            var visibleCount = 0;
+            for (var j = 0; j < rows.length; j++) {
+                var row = rows[j];
+                var source = row.getAttribute('data-source');
+                var sector = row.getAttribute('data-sector');
+                var status = row.getAttribute('data-status') || 'neu';
+                var score = parseInt(row.getAttribute('data-score') || '0', 10);
+                var daysLeftAttr = row.getAttribute('data-days-left');
+                var daysLeft = daysLeftAttr === '' || daysLeftAttr === null ? null : parseInt(daysLeftAttr, 10);
+                var text = row.textContent.toLowerCase();
+
+                var sourceMatch = (TenderScout.activeSource === 'all' ||
+                                  source === TenderScout.activeSource);
+                var sectorMatch = (TenderScout.activeSector === 'all' ||
+                                  sector === TenderScout.activeSector);
+                var statusMatch = (TenderScout.activeStatus === 'all' ||
+                                  status === TenderScout.activeStatus);
+                var scoreMatch = score >= TenderScout.minScore;
+                var expiredMatch = !TenderScout.hideExpired ||
+                                   daysLeft === null || daysLeft >= 0;
+                var searchMatch = (!TenderScout.searchTerm ||
+                                  text.indexOf(TenderScout.searchTerm) !== -1);
+
+                var visible = sourceMatch && sectorMatch && statusMatch &&
+                              scoreMatch && expiredMatch && searchMatch;
+                row.style.display = visible ? '' : 'none';
+                if (visible) visibleCount++;
+
+                // Hide/show associated summary row
+                var next = row.nextElementSibling;
+                if (next && next.classList.contains('summary-row')) {
+                    if (!visible) {
+                        next.classList.remove('visible');
+                        next.style.display = 'none';
+                    } else {
+                        next.style.display = '';
+                    }
+                }
+            }
+            var countEl = document.querySelector('.visible-count');
+            if (countEl) {
+                countEl.textContent = 'Zeige: ' + visibleCount + ' von ' + rows.length;
+            }
+        }
+
+        function searchTable(term) {
+            TenderScout.searchTerm = term.toLowerCase().trim();
+            applyFilters();
+            var clearBtn = document.querySelector('.search-clear');
+            if (clearBtn) {
+                clearBtn.classList.toggle('visible', term.length > 0);
+            }
+        }
+
+        function setButtonGroup(selector, attribute, value) {
+            var buttons = document.querySelectorAll(selector);
+            for (var i = 0; i < buttons.length; i++) {
+                buttons[i].classList.toggle('active', buttons[i].getAttribute(attribute) === value);
+            }
+        }
+
+        function filterSource(source) {
+            TenderScout.activeSource = source;
+            setButtonGroup('.source-btn', 'data-source', source);
+            applyFilters();
+        }
+
+        function filterSector(sector) {
+            TenderScout.activeSector = sector;
+            setButtonGroup('.sector-btn', 'data-sector', sector);
+            applyFilters();
+        }
+
+        function filterStatus(status) {
+            TenderScout.activeStatus = status;
+            setButtonGroup('.status-btn', 'data-status', status);
+            applyFilters();
+        }
+
+        function doSort() {
+            var tbody = document.querySelector('tbody');
+            if (!tbody) return;
+            var mainRows = Array.prototype.slice.call(tbody.querySelectorAll('tr:not(.summary-row)'));
+            mainRows.sort(function(a, b) {
+                var valA, valB;
+                if (TenderScout.activeSort === 'relevance') {
+                    valA = parseInt(a.getAttribute('data-score') || '0', 10);
+                    valB = parseInt(b.getAttribute('data-score') || '0', 10);
+                } else if (TenderScout.activeSort === 'deadline') {
+                    // Entries without a deadline always sort last
+                    valA = a.getAttribute('data-deadline') || '';
+                    valB = b.getAttribute('data-deadline') || '';
+                    var noneA = !valA || valA.indexOf('1970') === 0;
+                    var noneB = !valB || valB.indexOf('1970') === 0;
+                    if (noneA && noneB) return 0;
+                    if (noneA) return 1;
+                    if (noneB) return -1;
+                } else {
+                    valA = a.getAttribute('data-published') || '';
+                    valB = b.getAttribute('data-published') || '';
+                }
+                var cmp = (valA < valB) ? -1 : (valA > valB) ? 1 : 0;
+                return TenderScout.sortDirection === 'desc' ? -cmp : cmp;
+            });
+            for (var i = 0; i < mainRows.length; i++) {
+                tbody.appendChild(mainRows[i]);
+                // Re-attach summary row if it exists
+                var toggle = mainRows[i].querySelector('.summary-toggle');
+                if (toggle) {
+                    var match = toggle.getAttribute('onclick').match(/'([^']+)'/);
+                    if (match) {
+                        var summaryRow = document.getElementById(match[1]);
+                        if (summaryRow) tbody.appendChild(summaryRow);
+                    }
+                }
+            }
+        }
+
+        function sortTable(field) {
+            if (TenderScout.activeSort === field) {
+                TenderScout.sortDirection =
+                    TenderScout.sortDirection === 'desc' ? 'asc' : 'desc';
+            } else {
+                TenderScout.activeSort = field;
+                // Deadlines: soonest first is the useful default
+                TenderScout.sortDirection = field === 'deadline' ? 'asc' : 'desc';
+            }
+            var sortBtns = document.querySelectorAll('.sort-btn');
+            for (var i = 0; i < sortBtns.length; i++) {
+                var btnField = sortBtns[i].getAttribute('data-sort');
+                sortBtns[i].classList.toggle('active', btnField === field);
+                var arrow = sortBtns[i].querySelector('.sort-arrow');
+                if (arrow && btnField === field) {
+                    arrow.innerHTML = TenderScout.sortDirection === 'desc' ? '&#x25BC;' : '&#x25B2;';
+                }
+            }
+            doSort();
+            applyFilters();
+        }
+
+        /* ---------- Event bindings ---------- */
+
+        var searchInput = document.querySelector('.search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                searchTable(this.value);
+            });
+        }
+
+        var clearBtn = document.querySelector('.search-clear');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                var input = document.querySelector('.search-input');
+                if (input) { input.value = ''; }
+                searchTable('');
+            });
+        }
+
+        var sourceBtns = document.querySelectorAll('.source-btn');
+        for (var i = 0; i < sourceBtns.length; i++) {
+            sourceBtns[i].addEventListener('click', function() {
+                filterSource(this.getAttribute('data-source'));
+            });
+        }
+
+        var sectorBtns = document.querySelectorAll('.sector-btn');
+        for (var i = 0; i < sectorBtns.length; i++) {
+            sectorBtns[i].addEventListener('click', function() {
+                filterSector(this.getAttribute('data-sector'));
+            });
+        }
+
+        var statusBtns = document.querySelectorAll('.status-btn');
+        for (var i = 0; i < statusBtns.length; i++) {
+            statusBtns[i].addEventListener('click', function() {
+                filterStatus(this.getAttribute('data-status'));
+            });
+        }
+
+        var sortBtns = document.querySelectorAll('.sort-btn');
+        for (var i = 0; i < sortBtns.length; i++) {
+            sortBtns[i].addEventListener('click', function() {
+                sortTable(this.getAttribute('data-sort'));
+            });
+        }
+
+        var scoreSlider = document.querySelector('.score-slider');
+        if (scoreSlider) {
+            scoreSlider.addEventListener('input', function() {
+                TenderScout.minScore = parseInt(this.value, 10);
+                var valueEl = document.querySelector('.score-slider-value');
+                if (valueEl) valueEl.innerHTML = '&ge; ' + this.value;
+                applyFilters();
+            });
+        }
+
+        var expiredCheckbox = document.querySelector('.expired-checkbox');
+        if (expiredCheckbox) {
+            expiredCheckbox.addEventListener('change', function() {
+                TenderScout.hideExpired = this.checked;
+                applyFilters();
+            });
+        }
+
+        initStatusWorkflow();
+        initPdfButtons();
+        applyFilters();
+    </script>
+</body>
+</html>
