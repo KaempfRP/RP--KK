@@ -14,6 +14,7 @@ notices per day.
 
 import io
 import logging
+import os
 import re
 import time
 import zipfile
@@ -64,18 +65,20 @@ def _first_text(root: ET.Element, name: str) -> str:
 def _extract_buyer(root: ET.Element) -> str:
     """Resolve the buyer organization name from an eForms notice.
 
-    The ContractingParty references an organization by ID; the
-    organization list carries the names. Falls back to the first
-    organization name if the reference cannot be resolved.
+    EU notices: ContractingParty references an organization by ID and the
+    organization list carries the names. National eForms-DE notices carry
+    the name directly under ContractingParty/Party/PartyName instead.
     """
     buyer_org_id = ""
+    cp_direct_name = ""
     for cp in _findall_local(root, "ContractingParty"):
         for el in cp.iter():
-            if _local(el.tag) == "ID" and el.text:
+            tag = _local(el.tag)
+            if tag == "ID" and el.text and not buyer_org_id:
                 buyer_org_id = el.text.strip()
-                break
-        if buyer_org_id:
-            break
+            elif tag == "Name" and el.text and not cp_direct_name:
+                cp_direct_name = el.text.strip()
+        break
 
     first_name = ""
     for org in _findall_local(root, "Organization"):
@@ -91,10 +94,10 @@ def _extract_buyer(root: ET.Element) -> str:
             first_name = name
         if buyer_org_id and org_id == buyer_org_id and name:
             return name
-    return first_name or "–"
+    return cp_direct_name or first_name or "–"
 
 
-def _parse_eforms_notice(xml_bytes: bytes, notice_id: str) -> dict | None:
+def _parse_eforms_notice(xml_bytes: bytes, notice_id: str, fallback_published: str = "") -> dict | None:
     """Parse one eForms XML file into the unified entry format.
 
     Returns None for non-tender notices (awards, planning) or
@@ -129,7 +132,8 @@ def _parse_eforms_notice(xml_bytes: bytes, notice_id: str) -> dict | None:
         if deadline:
             break
 
-    published = _first_text(root, "IssueDate")
+    # National eForms-DE notices have no IssueDate — fall back to export day
+    published = _first_text(root, "IssueDate") or fallback_published
 
     return {
         "id": f"oevg-{notice_id}",
@@ -204,13 +208,21 @@ def _extract_eforms_details(root: ET.Element) -> dict:
     return details
 
 
-def fetch_oeffentlichevergabe(days: int = 2) -> list[dict]:
+def fetch_oeffentlichevergabe(days: int | None = None) -> list[dict]:
     """Fetch IT/consulting tenders from the last `days` daily exports.
+
+    4 days back so weekend exports are covered by the Monday run and a
+    single failed workflow run does not lose notices permanently
+    (dedup makes re-fetching harmless).
 
     Only entries passing the IT/consulting context check (CPV or title
     keywords) are returned — the service publishes ~1000 notices per
     day across all trades.
     """
+    if days is None:
+        # Overridable for backfills: OEVG_DAYS=10 python main.py
+        days = int(os.environ.get("OEVG_DAYS", "4"))
+
     entries: list[dict] = []
     seen_ids: set[str] = set()
     today = datetime.now(timezone.utc).date()
@@ -230,7 +242,7 @@ def fetch_oeffentlichevergabe(days: int = 2) -> list[dict]:
             notice_id = name.rsplit("-", 1)[0] if "-" in name else name
             notice_id = re.sub(r"\.xml$", "", notice_id)
             try:
-                entry = _parse_eforms_notice(archive.read(name), notice_id)
+                entry = _parse_eforms_notice(archive.read(name), notice_id, fallback_published=day)
             except Exception as e:
                 logger.debug("eForms parse error %s: %s", name, e)
                 continue

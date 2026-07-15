@@ -380,6 +380,10 @@ def score_entry(entry: dict) -> dict:
     buyer_lower = entry.get("buyer", "").lower()
     cpv_codes = entry.get("cpv") or []
     text = f"{title_lower} {buyer_lower}"
+    # Description (if the source provides one) matches at half weight —
+    # long texts must not inflate the score, but a 'Lastenheft' buried in
+    # the description is a real signal the title alone would miss.
+    desc_lower = str((entry.get("details") or {}).get("beschreibung", "")).lower()
 
     sector, buyer_type = classify_sector(title_lower, buyer_lower)
 
@@ -395,20 +399,25 @@ def score_entry(entry: dict) -> dict:
             "score_breakdown": {"context": False, "sector": False},
         }
 
-    # Tier 2: Role Matching
+    # Tier 2: Role Matching — title/buyer at full weight, description at half
     matched_roles = []
-    total_keyword_hits = 0
+    role_points = 0
     for role, keywords in ROLE_KEYWORDS.items():
-        role_hits = sum(1 for kw in keywords if kw in text)
-        if role_hits > 0:
+        title_hits = sum(1 for kw in keywords if kw in text)
+        desc_hits = sum(1 for kw in keywords if kw in desc_lower) if desc_lower else 0
+        if title_hits > 0:
             matched_roles.append(role)
-            total_keyword_hits += role_hits
+            role_points += 10 + title_hits * 4 + desc_hits * 2
+        elif desc_hits > 0:
+            matched_roles.append(role)
+            role_points += 6 + desc_hits * 2
 
-    role_score = min(50, len(matched_roles) * 10 + total_keyword_hits * 4)
+    role_score = min(50, role_points)
 
-    # Tier 3: ReqPOOL Fit Bonus
+    # Tier 3: ReqPOOL Fit Bonus — description hits at half weight
     fit_hits = sum(1 for kw in _REQPOOL_FIT_KEYWORDS if kw in text)
-    fit_bonus = min(20, fit_hits * 8)
+    fit_desc_hits = sum(1 for kw in _REQPOOL_FIT_KEYWORDS if kw in desc_lower) if desc_lower else 0
+    fit_bonus = min(20, fit_hits * 8 + fit_desc_hits * 4)
 
     # Tier 4: Sector Bonus — weighted instead of hard gate (P3)
     is_target = _is_target_sector(sector, title_lower, buyer_lower)

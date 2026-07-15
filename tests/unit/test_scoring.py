@@ -253,6 +253,47 @@ class TestSectorClassification:
         assert "buyer_type" in entries[0]
 
 
+# ===== DESCRIPTION MATCHING =====
+
+class TestDescriptionMatching:
+    """Role keywords in the description count at half weight."""
+
+    def test_description_roles_increase_score(self):
+        """EWN case: 'Projektlastenheft' only in the description."""
+        base = {
+            "title": "Digitalisierung des Instandhaltungs- und Auftragswesens",
+            "buyer": "EWN Entsorgungswerk für Nuklearanlagen GmbH",
+            "cpv": ["72220000"],
+        }
+        without = score_entry(dict(base))
+        with_desc = score_entry({**base, "details": {
+            "beschreibung": "Erstellung einer Projektskizze und eines Projektlastenheftes "
+                            "sowie der Anfangsplanung für die Digitalisierung.",
+        }})
+        assert with_desc["score"] > without["score"]
+        assert "Requirements Engineer" in with_desc["matched_roles"]
+
+    def test_description_weighs_less_than_title(self):
+        """Same keyword scores higher in the title than in the description."""
+        in_title = score_entry({
+            "title": "Digitalisierung Lastenheft", "buyer": "EnBW",
+        })
+        in_desc = score_entry({
+            "title": "Digitalisierung", "buyer": "EnBW",
+            "details": {"beschreibung": "Erstellung Lastenheft."},
+        })
+        assert in_title["score"] > in_desc["score"]
+
+    def test_description_alone_does_not_open_context_gate(self):
+        """IT keywords only in the description do not pass the context gate."""
+        result = score_entry({
+            "title": "Neubau Betriebsgebäude",
+            "buyer": "Stadtwerke München",
+            "details": {"beschreibung": "Inklusive Software für die Gebäudeautomation."},
+        })
+        assert result["score"] == 0
+
+
 # ===== SECTOR BONUS =====
 
 class TestSectorBonus:

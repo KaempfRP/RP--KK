@@ -74,6 +74,46 @@ class TestEformsParsing:
         assert entry["buyer"] == "Stadtwerke Musterstadt GmbH"
 
 
+EFORMS_NATIONAL_NOTICE = """<?xml version="1.0" encoding="UTF-8"?>
+<ns9:ContractNotice xmlns:ns9="urn:oasis:names:specification:ubl:schema:xsd:ContractNotice-2"
+    xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+    xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cac:ContractingParty>
+    <cac:Party>
+      <cac:PartyName><cbc:Name>EWN Entsorgungswerk für Nuklearanlagen GmbH</cbc:Name></cac:PartyName>
+    </cac:Party>
+  </cac:ContractingParty>
+  <cac:ProcurementProject>
+    <cbc:Name>Digitalisierung des Instandhaltungs- und Auftragswesens</cbc:Name>
+    <cac:MainCommodityClassification>
+      <cbc:ItemClassificationCode listName="cpv">72220000</cbc:ItemClassificationCode>
+    </cac:MainCommodityClassification>
+  </cac:ProcurementProject>
+  <cac:TenderingProcess>
+    <cac:TenderSubmissionDeadlinePeriod>
+      <cbc:EndDate>2026-08-10+02:00</cbc:EndDate>
+    </cac:TenderSubmissionDeadlinePeriod>
+  </cac:TenderingProcess>
+</ns9:ContractNotice>
+"""
+
+
+class TestNationalEformsParsing:
+    """National eForms-DE notices: no Organization list, no IssueDate."""
+
+    def test_buyer_from_contracting_party_name(self):
+        entry = _parse_eforms_notice(EFORMS_NATIONAL_NOTICE.encode(), "25575098-1")
+        assert entry is not None
+        assert entry["buyer"] == "EWN Entsorgungswerk für Nuklearanlagen GmbH"
+        assert entry["title"] == "Digitalisierung des Instandhaltungs- und Auftragswesens"
+        assert entry["deadline"] == "2026-08-10"
+
+    def test_published_falls_back_to_export_day(self):
+        entry = _parse_eforms_notice(
+            EFORMS_NATIONAL_NOTICE.encode(), "25575098-1", fallback_published="2026-07-11")
+        assert entry["published"] == "2026-07-11"
+
+
 AT_DETAIL_HTML = """
 <html><body>
 <div>ÜBERBLICK AUSSCHREIBUNG</div>
