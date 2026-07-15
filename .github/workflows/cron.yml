@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 6 * * 1-5'   # Mo–Fr, 06:00 UTC (08:00 deutscher Zeit)
   workflow_dispatch:          # Manueller Start jederzeit möglich
+    inputs:
+      oevg_days:
+        description: 'Abholfenster oeffentlichevergabe.de in Tagen (Nachholen, Standard 6)'
+        required: false
+        default: ''
   push:
     branches: [main]
     paths:
@@ -36,6 +41,7 @@ jobs:
       - name: Scout ausführen
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OEVG_DAYS: ${{ github.event.inputs.oevg_days }}
         run: python main.py
 
       - name: Änderungen committen

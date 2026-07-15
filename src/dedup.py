@@ -1,9 +1,13 @@
-"""Deduplication module using SQLite.
+"""Deduplication and persistence module using SQLite.
 
-Tracks seen tender IDs in data/seen.db to ensure each tender
-is only marked as "new" once. Also stores AI-generated summaries.
+Tracks seen tenders in data/seen.db so each tender is only marked
+"new" once, stores AI-generated summaries, and — since the page is
+no longer a rolling window — persists the full entry data so a tender
+stays visible until its deadline passes, regardless of when it was
+published or which fetch window caught it.
 """
 
+import json
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -26,7 +30,8 @@ def init_db(db_path: str | None = None) -> None:
                 source TEXT,
                 title TEXT,
                 first_seen TEXT,
-                summary TEXT DEFAULT ''
+                summary TEXT DEFAULT '',
+                data TEXT DEFAULT ''
             )
         """)
         conn.commit()
@@ -36,14 +41,17 @@ def init_db(db_path: str | None = None) -> None:
 
 
 def _migrate_db(db_path: str | None = None) -> None:
-    """Add summary column if it doesn't exist (idempotent)."""
+    """Add missing columns to existing DBs (idempotent)."""
     conn = _get_connection(db_path)
     try:
         cursor = conn.execute("PRAGMA table_info(seen)")
         columns = {row[1] for row in cursor.fetchall()}
         if "summary" not in columns:
             conn.execute("ALTER TABLE seen ADD COLUMN summary TEXT DEFAULT ''")
-            conn.commit()
+        if "data" not in columns:
+            # Full entry JSON, so the page can show all open tenders
+            conn.execute("ALTER TABLE seen ADD COLUMN data TEXT DEFAULT ''")
+        conn.commit()
     finally:
         conn.close()
 
@@ -76,6 +84,61 @@ def save_seen(entries: list[dict], db_path: str | None = None) -> None:
                 (entry["id"], entry.get("source", ""), entry.get("title", ""), now),
             )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def store_entries(entries: list[dict], db_path: str | None = None) -> None:
+    """Persist the full data of all fetched entries (insert new, refresh existing).
+
+    Preserves first_seen and the summary column; only the JSON payload,
+    source and title are refreshed so re-fetched tenders get up-to-date
+    deadlines etc. This is what lets the page show every open tender,
+    not just the current fetch window.
+    """
+    if not entries:
+        return
+
+    conn = _get_connection(db_path)
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        for entry in entries:
+            payload = json.dumps(entry, ensure_ascii=False)
+            conn.execute(
+                "INSERT OR IGNORE INTO seen (id, source, title, first_seen, data) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (entry["id"], entry.get("source", ""), entry.get("title", ""), now, payload),
+            )
+            conn.execute(
+                "UPDATE seen SET data = ?, source = ?, title = ? WHERE id = ?",
+                (payload, entry.get("source", ""), entry.get("title", ""), entry["id"]),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_all_entries(db_path: str | None = None) -> list[dict]:
+    """Return all stored entries (with full data) as entry dicts.
+
+    Rows from the old schema without a data payload are skipped — they
+    carry no deadline/buyer and will be repopulated once re-fetched.
+    """
+    conn = _get_connection(db_path)
+    try:
+        cursor = conn.execute(
+            "SELECT id, data, first_seen FROM seen WHERE data IS NOT NULL AND data != ''"
+        )
+        entries = []
+        for entry_id, data, first_seen in cursor.fetchall():
+            try:
+                entry = json.loads(data)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            entry["id"] = entry_id
+            entry["first_seen"] = first_seen
+            entries.append(entry)
+        return entries
     finally:
         conn.close()
 

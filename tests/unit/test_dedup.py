@@ -1,8 +1,9 @@
-"""Unit tests for deduplication module."""
+"""Unit tests for deduplication and persistence module."""
 
 from src.dedup import (
     init_db, filter_new, save_seen, get_all_seen_ids,
     get_stored_summaries, save_summaries, _migrate_db,
+    store_entries, get_all_entries,
 )
 
 
@@ -88,3 +89,69 @@ def test_save_summaries_updates_existing(in_memory_db, sample_entries):
 def test_save_summaries_empty_dict(in_memory_db):
     """Empty dict is a no-op, no crash."""
     save_summaries({}, in_memory_db)
+
+
+# --- Full-entry persistence (page shows all open tenders) ---
+
+def _entry(eid, **kw):
+    base = {
+        "id": eid, "title": "IT-Beratung", "buyer": "Stadtwerke Test",
+        "published": "2026-07-11", "deadline": "2026-08-10",
+        "url": "https://example.com/" + eid, "source": "oeffentlichevergabe.de",
+        "cpv": ["72000000"],
+    }
+    base.update(kw)
+    return base
+
+
+def test_store_and_get_all_entries_roundtrip(in_memory_db):
+    """Stored entries come back with full data."""
+    store_entries([_entry("e1"), _entry("e2", buyer="EnBW")], db_path=in_memory_db)
+    entries = {e["id"]: e for e in get_all_entries(db_path=in_memory_db)}
+    assert set(entries) == {"e1", "e2"}
+    assert entries["e2"]["buyer"] == "EnBW"
+    assert entries["e1"]["deadline"] == "2026-08-10"
+    assert "first_seen" in entries["e1"]
+
+
+def test_get_all_entries_persists_across_runs(in_memory_db):
+    """A tender stored earlier is still returned when a later fetch does not include it."""
+    store_entries([_entry("old-open")], db_path=in_memory_db)   # run 1
+    store_entries([_entry("fresh")], db_path=in_memory_db)      # run 2, different fetch
+    ids = {e["id"] for e in get_all_entries(db_path=in_memory_db)}
+    assert ids == {"old-open", "fresh"}
+
+
+def test_store_entries_refreshes_data_keeps_first_seen(in_memory_db):
+    """Re-storing updates the payload but preserves first_seen."""
+    store_entries([_entry("e1", deadline="2026-08-10")], db_path=in_memory_db)
+    first = get_all_entries(db_path=in_memory_db)[0]["first_seen"]
+    store_entries([_entry("e1", deadline="2026-09-01")], db_path=in_memory_db)
+    after = get_all_entries(db_path=in_memory_db)[0]
+    assert after["deadline"] == "2026-09-01"       # refreshed
+    assert after["first_seen"] == first             # preserved
+
+
+def test_store_entries_preserves_summary(in_memory_db):
+    """Re-storing an entry does not wipe its summary."""
+    store_entries([_entry("e1")], db_path=in_memory_db)
+    save_summaries({"e1": "Ein Summary."}, db_path=in_memory_db)
+    store_entries([_entry("e1", deadline="2026-09-01")], db_path=in_memory_db)
+    assert get_stored_summaries(in_memory_db) == {"e1": "Ein Summary."}
+
+
+def test_migrate_adds_data_column(tmp_path):
+    """Migration adds the data column to an old-schema DB."""
+    import sqlite3
+    db_path = str(tmp_path / "migrate_data.db")
+    conn = sqlite3.connect(db_path)
+    conn.execute("CREATE TABLE seen (id TEXT PRIMARY KEY, source TEXT, title TEXT, first_seen TEXT, summary TEXT DEFAULT '')")
+    conn.execute("INSERT INTO seen (id) VALUES ('t1')")
+    conn.commit()
+    conn.close()
+
+    _migrate_db(db_path)
+    store_entries([_entry("t2")], db_path=db_path)
+    ids = {e["id"] for e in get_all_entries(db_path=db_path)}
+    assert "t2" in ids            # new row with data works
+    assert "t1" not in ids        # old row without data is skipped, not crashing

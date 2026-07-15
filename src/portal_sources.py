@@ -220,8 +220,15 @@ def fetch_oeffentlichevergabe(days: int | None = None) -> list[dict]:
     day across all trades.
     """
     if days is None:
-        # Overridable for backfills: OEVG_DAYS=10 python main.py
-        days = int(os.environ.get("OEVG_DAYS", "4"))
+        # Overridable for backfills: OEVG_DAYS=14 python main.py
+        # Default 6 covers a long weekend plus one missed run; persistence
+        # keeps older-but-still-open tenders on the page anyway.
+        # (env may be present but empty on scheduled runs → treat as unset)
+        env_days = (os.environ.get("OEVG_DAYS") or "").strip()
+        try:
+            days = int(env_days) if env_days else 6
+        except ValueError:
+            days = 6
 
     entries: list[dict] = []
     seen_ids: set[str] = set()
