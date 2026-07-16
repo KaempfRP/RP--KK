@@ -36,8 +36,15 @@ export default {
     }
 
     if (request.method === "GET") {
-      // Health check
-      return withCors(json({ ok: true, service: "tender-scout-status-worker" }));
+      // Health check. Meldet auch, ob der Token wirklich an dieser Version
+      // haengt — Secrets sind in Cloudflare an eine Worker-Version gebunden,
+      // eine vor dem Secret deployte Version laeuft ohne. Nur Namen, keine Werte.
+      return withCors(json({
+        ok: true,
+        service: "tender-scout-status-worker",
+        tokenConfigured: !!env.GH_TOKEN,
+        bindings: Object.keys(env || {}),
+      }));
     }
 
     if (request.method !== "POST") {
