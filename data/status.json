@@ -1,7 +1,1 @@
-{
-  "HEALTHCHECK-TESTEINTRAG": {
-    "status": "weitergeleitet",
-    "ts": "2026-07-16T14:35:50.560Z",
-    "forwardedTo": "Testlauf Claude"
-  }
-}
+{}
