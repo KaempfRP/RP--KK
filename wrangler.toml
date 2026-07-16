@@ -1,0 +1,14 @@
+# Cloudflare-Worker fuer den geteilten Status (siehe cloudflare-worker-SETUP.md).
+#
+# Der Worker "tender-scout" ist mit diesem Repo verbunden und baut bei jedem
+# Push auf main automatisch neu ("Deploy command: npx wrangler deploy").
+# Ohne diese Datei weiss wrangler nicht, welche Datei der Worker ist, und
+# deployt stattdessen die statischen Dateien — dann liefert die Worker-URL
+# die Dashboard-HTML aus und der Status-Sync ist tot (POST -> 405).
+#
+# Der GitHub-Token bleibt davon unberuehrt: Secrets haengen am Worker, nicht
+# am Code, und ueberleben jeden Deploy.
+
+name = "tender-scout"
+main = "cloudflare-worker-status.js"
+compatibility_date = "2026-07-16"
