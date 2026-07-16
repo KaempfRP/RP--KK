@@ -28,8 +28,18 @@ Stadtwerke, Landkreis, Ministerium, …) klassifiziert.
 Branchen-/Quellen-/Status-Filter, Frist-Ampel (rot < 7 Tage,
 gelb < 14 Tage), Ausblenden abgelaufener Fristen,
 Status-Workflow pro Ausschreibung (Neu → Geprüft → Weitergeleitet
-→ Beworben/Verworfen, mit Zeitstempel, lokal im Browser gespeichert)
+→ Beworben/Verworfen, mit Zeitstempel und Name des Empfängers)
 und Einseiten-PDF-Export pro Eintrag.
+
+**Geteilter Status:** Der Bearbeitungsstatus liegt zentral in
+`data/status.json` — alle Nutzer sehen denselben Stand und damit,
+ob eine Ausschreibung bereits jemand weitergeleitet hat. Gelesen
+wird direkt über raw.githubusercontent.com (ohne Token, ohne
+Rate-Limit), geschrieben über einen kleinen Cloudflare Worker, der
+den GitHub-Token serverseitig hält. Einrichtung:
+[cloudflare-worker-SETUP.md](cloudflare-worker-SETUP.md). Solange
+kein Worker eingetragen ist, zeigt die Seite „nur lokal gespeichert"
+und der Status bleibt im jeweiligen Browser.
 
 ## Setup (einmalig)
 

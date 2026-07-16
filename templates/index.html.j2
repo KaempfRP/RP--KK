@@ -198,23 +198,6 @@
         .sync-indicator.sync-error { color: var(--ampel-red); }
         .sync-indicator.sync-offline { color: var(--color-grey); }
 
-        .sync-token-btn {
-            padding: 0.25rem 0.7rem;
-            border: 1px solid #c3cde4;
-            background: var(--color-white);
-            color: var(--color-primary);
-            border-radius: 999px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.75rem;
-            margin-left: 0.35rem;
-        }
-
-        .sync-token-btn:hover {
-            border-color: var(--color-primary);
-            background: #eef2fb;
-        }
-
         /* Min-Relevanz-Slider */
         .score-slider-wrap {
             display: flex;
@@ -768,7 +751,6 @@
             <button class="filter-btn status-btn" data-status="beworben">Beworben</button>
             <button class="filter-btn status-btn" data-status="verworfen">Verworfen</button>
             <span class="sync-indicator" id="syncIndicator">wird geladen&hellip;</span>
-            <button class="sync-token-btn" id="syncTokenBtn" title="GitHub-Zugang f&uuml;r geteilten Status einrichten">GitHub-Zugang</button>
         </div>
 
         <div class="toolbar-row">
@@ -957,50 +939,25 @@
 
         /* ---------- Status-Workflow (geteilt via GitHub, localStorage als Cache) ---------- */
 
-        var GH_OWNER = 'KaempfRP';
-        var GH_REPO = 'RP--KK';
-        var GH_BRANCH = 'main';
-        var GH_STATUS_PATH = 'data/status.json';
-        var GH_TOKEN_KEY = 'tenderScoutGhToken';
+        // Schreiben laeuft ueber einen kleinen Cloudflare Worker, der den
+        // GitHub-Token serverseitig haelt — Einrichtung siehe cloudflare-worker-SETUP.md.
+        // Leer = noch nicht eingerichtet, Status bleibt dann nur im Browser.
+        var STATUS_API = '';
 
-        var RemoteStatus = { data: {}, sha: null, loaded: false };
+        // Lesen geht direkt gegen raw.githubusercontent.com. Die Contents-API
+        // waere hier falsch: ohne Token erlaubt sie nur 60 Abrufe pro Stunde und
+        // IP — bei mehreren Nutzern hinter einer Firmen-IP sofort aufgebraucht.
+        var STATUS_RAW_URL = 'https://raw.githubusercontent.com/KaempfRP/RP--KK/main/data/status.json';
+
+        var RemoteStatus = { data: {}, loaded: false };
 
         function statusKey(id) {
             return 'tenderStatus:' + id;
         }
 
-        function getGhToken() {
-            try {
-                return localStorage.getItem(GH_TOKEN_KEY) || '';
-            } catch (e) {
-                return '';
-            }
-        }
-
-        function setGhToken(token) {
-            try {
-                if (token) { localStorage.setItem(GH_TOKEN_KEY, token); }
-                else { localStorage.removeItem(GH_TOKEN_KEY); }
-            } catch (e) { /* ignore */ }
-        }
-
-        function promptForToken() {
-            var current = getGhToken();
-            var msg = 'GitHub Personal Access Token fuer geteilten Status.\n\n' +
-                'Fine-grained Token unter github.com/settings/tokens, Zugriff nur auf\n' +
-                GH_OWNER + '/' + GH_REPO + ', Permission "Contents: Read and write".\n\n' +
-                'Feld leeren + OK entfernt den Zugang (Status wird dann nur lokal\n' +
-                'in diesem Browser gespeichert, nicht mehr geteilt).';
-            var answer = window.prompt(msg, current);
-            if (answer === null) { return; }
-            setGhToken(answer.trim());
-            updateSyncIndicator();
-        }
-
         function updateSyncIndicator(state, detail) {
             var el = document.getElementById('syncIndicator');
             if (!el) { return; }
-            var hasToken = !!getGhToken();
             if (state === 'loading') {
                 el.textContent = 'wird geladen…';
                 el.className = 'sync-indicator';
@@ -1010,8 +967,8 @@
             } else if (state === 'error') {
                 el.textContent = '⚠ ' + (detail || 'Fehler beim Speichern');
                 el.className = 'sync-indicator sync-error';
-            } else if (!hasToken) {
-                el.textContent = '○ nur lokal gespeichert (kein Zugang)';
+            } else if (!STATUS_API) {
+                el.textContent = '○ nur lokal gespeichert (Sync nicht eingerichtet)';
                 el.className = 'sync-indicator sync-offline';
             } else {
                 el.textContent = '✓ geteilter Status aktiv';
@@ -1019,40 +976,14 @@
             }
         }
 
-        function decodeBase64Utf8(b64) {
-            try {
-                return decodeURIComponent(escape(window.atob(b64.replace(/\n/g, ''))));
-            } catch (e) {
-                return '{}';
-            }
-        }
-
-        function encodeUtf8Base64(str) {
-            return window.btoa(unescape(encodeURIComponent(str)));
-        }
-
-        function fetchRemoteStatusFile(withAuth) {
-            var url = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO +
-                '/contents/' + GH_STATUS_PATH + '?ref=' + GH_BRANCH + '&_=' + Date.now();
-            var headers = { 'Accept': 'application/vnd.github+json' };
-            var token = getGhToken();
-            if (withAuth && token) { headers['Authorization'] = 'Bearer ' + token; }
-            return fetch(url, { headers: headers }).then(function(res) {
-                if (res.status === 404) { return { data: {}, sha: null }; }
-                if (!res.ok) { throw new Error('HTTP ' + res.status); }
-                return res.json().then(function(json) {
-                    var data = {};
-                    try { data = JSON.parse(decodeBase64Utf8(json.content)); } catch (e) { /* keep empty */ }
-                    return { data: data, sha: json.sha };
-                });
-            });
-        }
-
         function loadRemoteStatus() {
             updateSyncIndicator('loading');
-            return fetchRemoteStatusFile(false).then(function(result) {
-                RemoteStatus.data = result.data || {};
-                RemoteStatus.sha = result.sha;
+            return fetch(STATUS_RAW_URL + '?_=' + Date.now(), { cache: 'no-store' }).then(function(res) {
+                if (res.status === 404) { return {}; }
+                if (!res.ok) { throw new Error('HTTP ' + res.status); }
+                return res.json();
+            }).then(function(data) {
+                RemoteStatus.data = data || {};
                 RemoteStatus.loaded = true;
                 updateSyncIndicator();
             }).catch(function() {
@@ -1061,46 +992,25 @@
             });
         }
 
-        function pushRemoteStatus(id, record, attempt) {
-            var token = getGhToken();
-            if (!token) { updateSyncIndicator(); return; }
-            attempt = attempt || 0;
+        function pushRemoteStatus(id, record) {
+            if (!STATUS_API) { updateSyncIndicator(); return; }
             updateSyncIndicator('saving');
 
-            fetchRemoteStatusFile(true).then(function(result) {
-                var merged = result.data || {};
-                merged[id] = record;
-                var content = encodeUtf8Base64(JSON.stringify(merged, null, 2));
-                var url = 'https://api.github.com/repos/' + GH_OWNER + '/' + GH_REPO + '/contents/' + GH_STATUS_PATH;
-                var body = {
-                    message: 'Status: ' + id + ' -> ' + record.status,
-                    content: content,
-                    branch: GH_BRANCH
-                };
-                if (result.sha) { body.sha = result.sha; }
-
-                return fetch(url, {
-                    method: 'PUT',
-                    headers: {
-                        'Accept': 'application/vnd.github+json',
-                        'Authorization': 'Bearer ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
-                }).then(function(res) {
-                    if (res.status === 409 && attempt < 2) {
-                        return pushRemoteStatus(id, record, attempt + 1);
-                    }
-                    if (!res.ok) {
-                        return res.json().catch(function() { return {}; }).then(function(errBody) {
-                            throw new Error(errBody.message || ('HTTP ' + res.status));
-                        });
-                    }
-                    return res.json().then(function(json) {
-                        RemoteStatus.data = merged;
-                        RemoteStatus.sha = json.content && json.content.sha;
-                        updateSyncIndicator();
-                    });
+            fetch(STATUS_API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: id,
+                    status: record.status,
+                    forwardedTo: record.forwardedTo
+                })
+            }).then(function(res) {
+                return res.json().catch(function() { return {}; }).then(function(body) {
+                    if (!res.ok) { throw new Error(body.error || ('HTTP ' + res.status)); }
+                    // Der Worker gibt den gemergten Gesamtstand zurueck, damit
+                    // zwischenzeitliche Aenderungen anderer nicht verloren gehen.
+                    if (body.data) { RemoteStatus.data = body.data; }
+                    updateSyncIndicator();
                 });
             }).catch(function(err) {
                 updateSyncIndicator('error', (err && err.message) || 'Speichern fehlgeschlagen');
@@ -1159,13 +1069,21 @@
             }
         }
 
+        function applyAllStatuses() {
+            var rows = document.querySelectorAll('tbody tr:not(.summary-row)');
+            for (var i = 0; i < rows.length; i++) {
+                var record = loadStatus(rows[i].getAttribute('data-id'));
+                if (record) { applyStatusToRow(rows[i], record); }
+            }
+        }
+
+        // Registriert nur die Listener. Getrennt vom Anwenden, weil der geteilte
+        // Stand erst spaeter eintrifft und die Zeilen dann erneut gefuellt werden.
         function initStatusWorkflow() {
             var rows = document.querySelectorAll('tbody tr:not(.summary-row)');
             for (var i = 0; i < rows.length; i++) {
                 (function(row) {
                     var id = row.getAttribute('data-id');
-                    var record = loadStatus(id);
-                    if (record) applyStatusToRow(row, record);
                     var select = row.querySelector('.status-select');
                     if (!select) return;
                     select.addEventListener('change', function() {
@@ -1627,20 +1545,14 @@
             });
         }
 
-        var syncTokenBtn = document.getElementById('syncTokenBtn');
-        if (syncTokenBtn) {
-            syncTokenBtn.addEventListener('click', function() {
-                promptForToken();
-            });
-        }
-
         updateSyncIndicator();
         initStatusWorkflow();
+        applyAllStatuses();
         initPdfButtons();
         applyFilters();
 
         loadRemoteStatus().then(function() {
-            initStatusWorkflow();
+            applyAllStatuses();
             applyFilters();
         });
     </script>
