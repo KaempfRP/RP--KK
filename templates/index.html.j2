@@ -942,7 +942,7 @@
         // Schreiben laeuft ueber einen kleinen Cloudflare Worker, der den
         // GitHub-Token serverseitig haelt — Einrichtung siehe cloudflare-worker-SETUP.md.
         // Leer = noch nicht eingerichtet, Status bleibt dann nur im Browser.
-        var STATUS_API = '';
+        var STATUS_API = 'https://tender-scout.kim-noah-kaempf.workers.dev';
 
         // Lesen geht direkt gegen raw.githubusercontent.com. Die Contents-API
         // waere hier falsch: ohne Token erlaubt sie nur 60 Abrufe pro Stunde und
