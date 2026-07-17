@@ -9,6 +9,7 @@ import os
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from zoneinfo import ZoneInfo
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -17,6 +18,20 @@ from src.scoring import score_entries
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
 TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "templates")
 DOCS_DIR = os.path.join(PROJECT_ROOT, "docs")
+
+BERLIN = ZoneInfo("Europe/Berlin")
+
+# Der Scout laeuft per Cron um 06:00 UTC an Werktagen (.github/workflows/cron.yml).
+# GitHub-Cron kennt nur UTC; in Berliner Zeit ist das je nach Sommer-/Winterzeit
+# 08:00 oder 07:00. Die Anzeige wird deshalb berechnet statt festgeschrieben —
+# eine feste Uhrzeit waere ein halbes Jahr lang falsch.
+CRON_UTC_HOUR = 6
+
+
+def _schedule_note(now: datetime) -> str:
+    """Wann automatisch aktualisiert wird — in Berliner Zeit, zur DST passend."""
+    run_utc = now.replace(hour=CRON_UTC_HOUR, minute=0, second=0, microsecond=0)
+    return f"werktags {run_utc.astimezone(BERLIN):%H:%M} Uhr"
 
 
 def normalize_date_for_sort(date_str: str) -> str:
@@ -127,7 +142,11 @@ def render_page(
     sources = sorted({e["source"] for e in all_entries})
     sectors = sorted({e.get("sector", "Sonstige") for e in all_entries})
 
-    updated_at = now.strftime("%d.%m.%Y %H:%M Uhr")
+    # Beide Zeitangaben in Berliner Zeit — die Seite liest ja niemand in UTC.
+    # Vorher wurde die UTC-Zeit ohne Kennzeichnung angezeigt und war damit im
+    # Sommer zwei Stunden falsch.
+    updated_at = now.astimezone(BERLIN).strftime("%d.%m.%Y %H:%M Uhr")
+    schedule_note = _schedule_note(now)
 
     env = Environment(loader=FileSystemLoader(templates), autoescape=True)
     template = env.get_template("index.html.j2")
@@ -139,6 +158,7 @@ def render_page(
         new_ids=new_ids,
         highlight_ids=highlight_ids,
         updated_at=updated_at,
+        schedule_note=schedule_note,
         sources=sources,
         sectors=sectors,
         total_count=len(all_entries),
