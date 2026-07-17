@@ -1,85 +1,79 @@
-# Setup: Zentraler Status-Sync (einmalig, nur du)
+# Geteilter Status — wie er funktioniert
 
-Ziel: Alle 40 Nutzer sehen und ändern denselben Status, ohne selbst
-irgendetwas einzurichten. Der GitHub-Zugriff läuft über einen kleinen
-kostenlosen Cloud-Dienst (Cloudflare Worker), den nur du einrichtest.
+Alle Nutzer sehen und ändern denselben Bearbeitungsstatus (Neu → Geprüft →
+Weitergeleitet → Beworben/Verworfen, inklusive Empfänger und Zeitstempel).
+Niemand muss dafür etwas einrichten — kein Konto, kein Token, nichts.
 
-Dauer: ca. 10 Minuten, keine Kreditkarte nötig.
+**Für die Nutzer gibt es hier nichts zu tun.** Diese Datei beschreibt nur,
+wie es intern läuft und wie man es im Notfall wiederherstellt.
 
-## 1. Cloudflare-Account (falls noch nicht vorhanden)
+## Aufbau
 
-1. https://dash.cloudflare.com/sign-up öffnen
-2. Mit E-Mail registrieren (kostenlos)
-
-## 2. Worker erstellen
-
-1. Im Cloudflare-Dashboard: **Workers & Pages** → **Create** → **Workers** → **Create Worker**
-2. Namen vergeben, z. B. `tender-scout-status`
-3. **Deploy** klicken (erzeugt erstmal einen Platzhalter)
-4. Danach **Edit code** klicken → der Code-Editor öffnet sich
-5. Den kompletten Inhalt der Datei `cloudflare-worker-status.js` (liegt neben
-   dieser Anleitung) kopieren und den Beispielcode im Editor komplett ersetzen
-6. Oben rechts **Deploy** klicken
-
-## 3. GitHub-Token als Secret hinterlegen
-
-Der Worker braucht selbst einen GitHub-Token mit Schreibrecht auf
-`KaempfRP/RP--KK` (Contents: Read and write) — genau wie die Tokens, die
-wir vorhin schon mal erstellt haben.
-
-1. Neuen Fine-grained Token erstellen: github.com/settings/tokens →
-   Fine-grained tokens → Generate new token → Repository access nur
-   `KaempfRP/RP--KK` → Permissions → Contents: **Read and write**
-2. Zurück im Cloudflare Worker: **Settings** → **Variables and Secrets**
-   → **Add** → Name: `GH_TOKEN`, Wert: der eben erstellte Token,
-   Typ: **Secret** (nicht "Text"!) → Speichern
-
-## 4. Worker-URL ins Dashboard eintragen
-
-Auf der Worker-Übersichtsseite steht oben eine URL wie:
-
-`https://tender-scout-status.<dein-name>.workers.dev`
-
-Diese URL muss an genau eine Stelle — in `templates/index.html.j2`:
-
-```js
-var STATUS_API = '';   // <- hier die Worker-URL eintragen
+```
+Dashboard (GitHub Pages)  →  Cloudflare Worker  →  Cloudflare KV
+   kaempfrp.github.io          tender-scout        tender-scout-status
 ```
 
-Also z. B.:
+- **Worker:** `tender-scout` unter
+  `https://tender-scout.kim-noah-kaempf.workers.dev`
+  Code: `cloudflare-worker-status.js` (in diesem Repo)
+- **Speicher:** Cloudflare KV, Namespace `tender-scout-status`
+- **Konfiguration:** `wrangler.toml` (Worker-Name, Einstiegsdatei, KV-Binding)
+- **Im Dashboard:** die Worker-URL steht in `templates/index.html.j2` unter
+  `var STATUS_API`
 
-```js
-var STATUS_API = 'https://tender-scout-status.dein-name.workers.dev';
+Das Dashboard liest den Stand beim Laden per `GET` vom Worker und schreibt
+Änderungen per `POST`. Der Worker legt alles unter einem Schlüssel in KV ab.
+
+## Deployment
+
+Der Worker ist mit diesem Repo verbunden und deployt sich **automatisch bei
+jedem Push auf `main`** (Deploy-Befehl: `npx wrangler deploy`). Der Code im
+Repo ist die Quelle der Wahrheit — im Cloudflare-Dashboard muss nichts von
+Hand eingefügt werden.
+
+> **Wichtig:** `wrangler.toml` muss existieren. Fehlt sie, findet wrangler
+> keinen Einstiegspunkt und deployt stattdessen die statischen Dateien. Die
+> Worker-URL liefert dann die Dashboard-HTML aus und der Status-Sync ist tot
+> (`POST` antwortet mit `405`). Genau das ist schon einmal passiert.
+
+## Warum kein GitHub-Token mehr
+
+Früher lag der Status in `data/status.json` in diesem Repo. Das verlangte
+einen GitHub-Token mit Schreibrecht im Worker — mit drei Problemen:
+
+1. Der Token musste von Hand im Dashboard hinterlegt werden (fehleranfällig:
+   Secrets gehören in „Variables and secrets **used at runtime**", nicht in
+   den Build-Bereich).
+2. Ein fehlerhafter Deploy hat das Secret verloren — danach speicherte gar
+   nichts mehr.
+3. Jede Statusänderung erzeugte einen Commit. Bei 40 Nutzern wird die
+   Historie schnell unbrauchbar.
+
+KV hat nichts davon. Kein Geheimnis, das verlorengehen kann.
+
+## Prüfen, ob es läuft
+
+Die Worker-URL im Browser aufrufen. Erwartet:
+
+```json
+{"ok":true,"service":"tender-scout-status-worker","data":{ ... }}
 ```
 
-Danach committen und pushen. Der GitHub-Action-Workflow baut die Seite
-automatisch neu (er läuft bei jeder Änderung an `templates/`), und ab
-dann speichern alle Nutzer zentral — ohne selbst etwas einzurichten.
+- `data` enthält den aktuellen Stand aller Einträge.
+- Kommt stattdessen HTML: `wrangler.toml` fehlt oder der Build ist schiefgegangen.
+- Kommt `KV-Binding STATUS_KV fehlt`: Das KV-Binding ist nicht verbunden —
+  `wrangler.toml` prüfen.
 
-Solange das Feld leer ist, zeigt das Dashboard „nur lokal gespeichert"
-und der Status bleibt im jeweiligen Browser. Es geht nichts kaputt,
-das Feature ist nur noch nicht scharf.
+Im Dashboard muss oben **„✓ geteilter Status aktiv"** stehen.
 
-## 5. Prüfen, ob es läuft
+## Wiederherstellen (falls der KV-Speicher mal neu muss)
 
-1. Dashboard öffnen, bei einer Ausschreibung Status auf
-   **Weitergeleitet** setzen und einen Namen eintragen
-2. Oben muss „✓ geteilter Status aktiv" stehen (nicht „⚠ …")
-3. In `data/status.json` im Repo sollte kurz darauf ein neuer Commit
-   `Status: <id> -> weitergeleitet` auftauchen
-4. Gegenprobe: Seite in einem anderen Browser öffnen — der Status ist da
-
-## Gut zu wissen
-
-Der Worker prüft nicht, *wer* schreibt: Wer die Worker-URL kennt, kann
-einen Status setzen. Für einen internen Statuszettel, dessen Daten
-ohnehin öffentlich im Repo liegen, ist das vertretbar — schlimmstenfalls
-verstellt jemand einen Wert, und die Git-Historie zeigt jede Änderung.
-Der `ALLOWED_ORIGIN` im Worker-Code ist nur ein CORS-Header für Browser,
-kein Zugriffsschutz.
+1. Cloudflare → Storage & databases → Workers KV → Namespace anlegen
+2. Dessen ID in `wrangler.toml` unter `[[kv_namespaces]]` → `id` eintragen
+3. Committen und pushen — der Rest passiert automatisch
 
 ## Kosten
 
-Cloudflare Workers Free Tier: 100.000 Requests/Tag kostenlos. Für 40
-Nutzer, die gelegentlich einen Status ändern, wird das nie erreicht —
-Kosten bleiben bei 0 €.
+Cloudflare Free Tier: 100.000 Worker-Anfragen und 100.000 KV-Lesevorgänge pro
+Tag. Für 40 Nutzer wird das nie erreicht — Kosten bleiben bei 0 €.

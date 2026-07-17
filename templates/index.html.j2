@@ -950,17 +950,12 @@
             }
         }
 
-        /* ---------- Status-Workflow (geteilt via GitHub, localStorage als Cache) ---------- */
+        /* ---------- Status-Workflow (geteilt via Worker, localStorage als Cache) ---------- */
 
-        // Schreiben laeuft ueber einen kleinen Cloudflare Worker, der den
-        // GitHub-Token serverseitig haelt — Einrichtung siehe cloudflare-worker-SETUP.md.
+        // Lesen und Schreiben laufen beide ueber den Cloudflare Worker, der den
+        // Status in Cloudflare KV haelt — Einrichtung siehe cloudflare-worker-SETUP.md.
         // Leer = noch nicht eingerichtet, Status bleibt dann nur im Browser.
         var STATUS_API = 'https://tender-scout.kim-noah-kaempf.workers.dev';
-
-        // Lesen geht direkt gegen raw.githubusercontent.com. Die Contents-API
-        // waere hier falsch: ohne Token erlaubt sie nur 60 Abrufe pro Stunde und
-        // IP — bei mehreren Nutzern hinter einer Firmen-IP sofort aufgebraucht.
-        var STATUS_RAW_URL = 'https://raw.githubusercontent.com/KaempfRP/RP--KK/main/data/status.json';
 
         var RemoteStatus = { data: {}, loaded: false };
 
@@ -990,13 +985,17 @@
         }
 
         function loadRemoteStatus() {
+            if (!STATUS_API) {
+                RemoteStatus.loaded = true;
+                updateSyncIndicator();
+                return Promise.resolve();
+            }
             updateSyncIndicator('loading');
-            return fetch(STATUS_RAW_URL + '?_=' + Date.now(), { cache: 'no-store' }).then(function(res) {
-                if (res.status === 404) { return {}; }
+            return fetch(STATUS_API + '?_=' + Date.now(), { cache: 'no-store' }).then(function(res) {
                 if (!res.ok) { throw new Error('HTTP ' + res.status); }
                 return res.json();
-            }).then(function(data) {
-                RemoteStatus.data = data || {};
+            }).then(function(body) {
+                RemoteStatus.data = (body && body.data) || {};
                 RemoteStatus.loaded = true;
                 updateSyncIndicator();
             }).catch(function() {

@@ -5,10 +5,15 @@
 # Ohne diese Datei weiss wrangler nicht, welche Datei der Worker ist, und
 # deployt stattdessen die statischen Dateien — dann liefert die Worker-URL
 # die Dashboard-HTML aus und der Status-Sync ist tot (POST -> 405).
-#
-# Der GitHub-Token bleibt davon unberuehrt: Secrets haengen am Worker, nicht
-# am Code, und ueberleben jeden Deploy.
 
 name = "tender-scout"
 main = "cloudflare-worker-status.js"
 compatibility_date = "2026-07-16"
+
+# Der Status liegt in Cloudflare KV, nicht mehr im Repo. Damit braucht der
+# Worker keinen GitHub-Token mehr — es gibt also kein Geheimnis, das beim
+# Einrichten von Hand hinterlegt werden muesste, und ein Deploy kann es auch
+# nicht mehr verlieren. Die id ist nur eine Adresse, kein Geheimnis.
+[[kv_namespaces]]
+binding = "STATUS_KV"
+id = "592b43551b3840cb9850b95bdb98e220"

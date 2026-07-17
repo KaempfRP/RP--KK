@@ -32,14 +32,14 @@ Status-Workflow pro Ausschreibung (Neu → Geprüft → Weitergeleitet
 und Einseiten-PDF-Export pro Eintrag.
 
 **Geteilter Status:** Der Bearbeitungsstatus liegt zentral in
-`data/status.json` — alle Nutzer sehen denselben Stand und damit,
-ob eine Ausschreibung bereits jemand weitergeleitet hat. Gelesen
-wird direkt über raw.githubusercontent.com (ohne Token, ohne
-Rate-Limit), geschrieben über einen kleinen Cloudflare Worker, der
-den GitHub-Token serverseitig hält. Einrichtung:
-[cloudflare-worker-SETUP.md](cloudflare-worker-SETUP.md). Solange
-kein Worker eingetragen ist, zeigt die Seite „nur lokal gespeichert"
-und der Status bleibt im jeweiligen Browser.
+Cloudflare KV — alle Nutzer sehen denselben Stand und damit, ob eine
+Ausschreibung bereits jemand weitergeleitet hat. Gelesen und
+geschrieben wird über einen kleinen Cloudflare Worker; die Nutzer
+brauchen dafür weder Konto noch Token noch sonst eine Einrichtung.
+Details: [cloudflare-worker-SETUP.md](cloudflare-worker-SETUP.md).
+
+**Hervorhebung:** Die drei relevantesten Einträge, die neu *und* am
+selben Tag veröffentlicht wurden, werden dezent grün hinterlegt.
 
 ## Setup (einmalig)
 
