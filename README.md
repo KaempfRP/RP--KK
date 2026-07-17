@@ -44,8 +44,8 @@ selben Tag veröffentlicht wurden, werden dezent grün hinterlegt.
 ## Setup (einmalig)
 
 ```bash
-git clone https://github.com/reqpool/tender-scout
-cd tender-scout
+git clone https://github.com/KaempfRP/RP--KK
+cd RP--KK
 pip install -r requirements.txt
 python main.py
 ```
