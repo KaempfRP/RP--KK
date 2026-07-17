@@ -33,7 +33,9 @@ SEARCH_BODY = {
         "classification-cpv",
         "notice-type",
         "buyer-country",
-        # Detail facts for the AI management summary
+        # description-lot speist das Scoring (siehe scoring.py: die Beschreibung
+        # ist ein Signal, das der Titel allein verpasst). Die uebrigen Felder
+        # stammen aus der entfernten KI-Summary und werden derzeit nur mitgefuehrt.
         "description-lot",
         "procedure-type",
         "duration-period-value-lot",

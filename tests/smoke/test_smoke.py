@@ -18,7 +18,6 @@ def test_imports():
     import src.dedup
     import src.render
     import src.scoring
-    import src.summarizer
 
 
 def test_db_init(tmp_path):
@@ -59,7 +58,6 @@ def test_main_runs_with_mocked_sources(tmp_path, monkeypatch):
     monkeypatch.setattr("src.rss_sources.fetch_rss_sources", lambda: [])
     monkeypatch.setattr("src.dedup.DB_PATH", db_path)
     monkeypatch.setattr("src.render.DOCS_DIR", docs_dir)
-    monkeypatch.setattr("src.summarizer.ANTHROPIC_API_KEY", "")
 
     from src.dedup import init_db
     init_db(db_path)

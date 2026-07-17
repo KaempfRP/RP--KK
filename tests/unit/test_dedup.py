@@ -1,8 +1,7 @@
 """Unit tests for deduplication and persistence module."""
 
 from src.dedup import (
-    init_db, filter_new, save_seen, get_all_seen_ids,
-    get_stored_summaries, save_summaries, _migrate_db,
+    init_db, filter_new, save_seen, get_all_seen_ids, _migrate_db,
     store_entries, get_all_entries,
 )
 
@@ -62,35 +61,6 @@ def test_migrate_adds_summary_column(tmp_path):
     assert row[0] == "Test summary"
 
 
-def test_get_stored_summaries_empty(in_memory_db):
-    """Empty DB returns empty dict."""
-    result = get_stored_summaries(in_memory_db)
-    assert result == {}
-
-
-def test_get_stored_summaries_returns_nonempty(in_memory_db, sample_entries):
-    """Returns only entries with non-empty summaries."""
-    save_seen(sample_entries, in_memory_db)
-    save_summaries({"TED-2024-123456": "Ein Summary."}, in_memory_db)
-
-    result = get_stored_summaries(in_memory_db)
-    assert result == {"TED-2024-123456": "Ein Summary."}
-
-
-def test_save_summaries_updates_existing(in_memory_db, sample_entries):
-    """Summary is written to an existing seen entry."""
-    save_seen(sample_entries, in_memory_db)
-    save_summaries({"TED-2024-123456": "Summary text."}, in_memory_db)
-
-    result = get_stored_summaries(in_memory_db)
-    assert result["TED-2024-123456"] == "Summary text."
-
-
-def test_save_summaries_empty_dict(in_memory_db):
-    """Empty dict is a no-op, no crash."""
-    save_summaries({}, in_memory_db)
-
-
 # --- Full-entry persistence (page shows all open tenders) ---
 
 def _entry(eid, **kw):
@@ -133,11 +103,21 @@ def test_store_entries_refreshes_data_keeps_first_seen(in_memory_db):
 
 
 def test_store_entries_preserves_summary(in_memory_db):
-    """Re-storing an entry does not wipe its summary."""
+    """Re-storing an entry does not wipe the legacy summary column."""
+    import sqlite3
     store_entries([_entry("e1")], db_path=in_memory_db)
-    save_summaries({"e1": "Ein Summary."}, db_path=in_memory_db)
+
+    conn = sqlite3.connect(in_memory_db)
+    conn.execute("UPDATE seen SET summary = 'Ein Summary.' WHERE id = 'e1'")
+    conn.commit()
+    conn.close()
+
     store_entries([_entry("e1", deadline="2026-09-01")], db_path=in_memory_db)
-    assert get_stored_summaries(in_memory_db) == {"e1": "Ein Summary."}
+
+    conn = sqlite3.connect(in_memory_db)
+    row = conn.execute("SELECT summary FROM seen WHERE id = 'e1'").fetchone()
+    conn.close()
+    assert row[0] == "Ein Summary."
 
 
 def test_migrate_adds_data_column(tmp_path):

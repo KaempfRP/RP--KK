@@ -505,133 +505,6 @@
             white-space: nowrap;
         }
 
-        /* Summary */
-        .summary-toggle {
-            background: none;
-            border: 1px solid var(--color-primary);
-            color: var(--color-primary);
-            border-radius: 3px;
-            padding: 0.1rem 0.5rem;
-            font-size: 0.7rem;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-            margin-left: 0.4rem;
-            vertical-align: middle;
-        }
-
-        .summary-toggle:hover {
-            background: var(--color-primary);
-            color: var(--color-white);
-        }
-
-        .summary-row {
-            display: none;
-        }
-
-        .summary-row.visible {
-            display: table-row;
-        }
-
-        .summary-row td {
-            padding: 0;
-            border-bottom: none;
-        }
-
-        .summary-card {
-            margin: 0 0.5rem 0.5rem;
-            border: 1px solid #dde3ed;
-            border-radius: 8px;
-            overflow: hidden;
-            background: var(--color-white);
-            box-shadow: 0 2px 8px rgba(0, 46, 177, 0.06);
-        }
-
-        .summary-header {
-            background: var(--color-primary);
-            color: var(--color-white);
-            padding: 0.5rem 1rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .summary-header .ai-badge {
-            background: var(--color-white);
-            color: var(--color-primary);
-            padding: 0.1rem 0.5rem;
-            border-radius: 3px;
-            font-size: 0.65rem;
-            font-weight: 700;
-        }
-
-        .summary-body {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 0;
-        }
-
-        .summary-section {
-            padding: 0.75rem 1rem;
-            border-right: 1px solid #eef1f6;
-        }
-
-        .summary-section:last-child {
-            border-right: none;
-        }
-
-        .summary-icon-label {
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            margin-bottom: 0.4rem;
-        }
-
-        .summary-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .summary-dot.chance { background: var(--color-primary); }
-        .summary-dot.empfehlung { background: var(--color-secondary); }
-        .summary-dot.schritt { background: var(--color-accent-blue); }
-
-        .summary-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            color: var(--color-grey);
-        }
-
-        .summary-text {
-            font-size: 0.82rem;
-            color: #1a2332;
-            line-height: 1.55;
-        }
-
-        .summary-fit {
-            margin-left: auto;
-            font-size: 0.7rem;
-        }
-
-        @media (max-width: 768px) {
-            .summary-body {
-                grid-template-columns: 1fr;
-            }
-            .summary-section {
-                border-right: none;
-                border-bottom: 1px solid #eef1f6;
-            }
-            .summary-section:last-child {
-                border-bottom: none;
-            }
-        }
-
         .refresh-btn {
             display: inline-block;
             margin-left: 0.75rem;
@@ -811,14 +684,12 @@
                     data-published="{{ entry.published_iso }}"
                     data-deadline="{{ entry.deadline_iso | default('') }}"
                     data-days-left="{{ entry.days_left if entry.days_left is not none else '' }}"
-                    data-status="neu"{% if entry.summary %}
-                    data-summary='{{ entry.summary | tojson }}'{% endif %}>
+                    data-status="neu">
                     <td><span class="source-tag">{{ entry.source }}</span></td>
                     <td>
                         <a href="{{ entry.url }}" target="_blank" rel="noopener">{{ entry.title }}</a>
                         {% if entry.id in new_ids %}<span class="badge-neu">NEU</span>{% endif %}
                         {% if entry.relevance_score >= 50 %}<span class="badge-relevant">{{ entry.relevance_score }}%</span>{% endif %}
-                        {% if entry.summary %}<button class="summary-toggle" onclick="toggleSummary('summary-{{ loop.index }}')" title="Management Summary anzeigen">KI</button>{% endif %}
                     </td>
                     <td class="hide-mobile relevance-cell">
                         {% if entry.relevance_score > 0 %}
@@ -873,42 +744,6 @@
                         <button class="pdf-btn" title="Einseiten-PDF erzeugen">PDF</button>
                     </td>
                 </tr>
-                {% if entry.summary %}
-                <tr class="summary-row" id="summary-{{ loop.index }}" data-source="{{ entry.source }}">
-                    <td colspan="8">
-                        <div class="summary-card">
-                            <div class="summary-header">
-                                <span class="ai-badge">KI</span>
-                                Management Summary
-                                {% if entry.summary.fit_score %}<span class="summary-fit">ReqPOOL Fit: {{ entry.summary.fit_score }}%</span>{% endif %}
-                            </div>
-                            <div class="summary-body">
-                                <div class="summary-section">
-                                    <div class="summary-icon-label">
-                                        <span class="summary-dot chance"></span>
-                                        <span class="summary-label">Was wird gesucht?</span>
-                                    </div>
-                                    <div class="summary-text">{{ entry.summary.was_gesucht or entry.summary.chance or '–' }}</div>
-                                </div>
-                                <div class="summary-section">
-                                    <div class="summary-icon-label">
-                                        <span class="summary-dot empfehlung"></span>
-                                        <span class="summary-label">Empfehlung</span>
-                                    </div>
-                                    <div class="summary-text">{{ entry.summary.empfehlung or '–' }}</div>
-                                </div>
-                                <div class="summary-section">
-                                    <div class="summary-icon-label">
-                                        <span class="summary-dot schritt"></span>
-                                        <span class="summary-label">Relevanz für ReqPOOL</span>
-                                    </div>
-                                    <div class="summary-text">{{ entry.summary.relevanz or entry.summary.naechster_schritt or '–' }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                {% endif %}
                 {% endfor %}
             </tbody>
         </table>
@@ -942,13 +777,6 @@
             beworben: 'Beworben',
             verworfen: 'Verworfen'
         };
-
-        function toggleSummary(id) {
-            var row = document.getElementById(id);
-            if (row) {
-                row.classList.toggle('visible');
-            }
-        }
 
         /* ---------- Status-Workflow (geteilt via Worker, localStorage als Cache) ---------- */
 
@@ -1082,7 +910,7 @@
         }
 
         function applyAllStatuses() {
-            var rows = document.querySelectorAll('tbody tr:not(.summary-row)');
+            var rows = document.querySelectorAll('tbody tr');
             for (var i = 0; i < rows.length; i++) {
                 var record = loadStatus(rows[i].getAttribute('data-id'));
                 if (record) { applyStatusToRow(rows[i], record); }
@@ -1092,7 +920,7 @@
         // Registriert nur die Listener. Getrennt vom Anwenden, weil der geteilte
         // Stand erst spaeter eintrifft und die Zeilen dann erneut gefuellt werden.
         function initStatusWorkflow() {
-            var rows = document.querySelectorAll('tbody tr:not(.summary-row)');
+            var rows = document.querySelectorAll('tbody tr');
             for (var i = 0; i < rows.length; i++) {
                 (function(row) {
                     var id = row.getAttribute('data-id');
@@ -1147,23 +975,6 @@
             if (statusRecord && statusRecord.forwardedTo) statusLine += ' an ' + statusRecord.forwardedTo;
             if (statusRecord && statusRecord.ts) statusLine += ' (' + formatTs(statusRecord.ts) + ')';
 
-            // Optional KI-Summary from the adjacent summary row
-            var summary = null;
-            var next = row.nextElementSibling;
-            if (next && next.classList.contains('summary-row')) {
-                summary = [];
-                var sections = next.querySelectorAll('.summary-section');
-                for (var i = 0; i < sections.length; i++) {
-                    var label = sections[i].querySelector('.summary-label');
-                    var text = sections[i].querySelector('.summary-text');
-                    if (label && text) {
-                        summary.push({ label: label.textContent, text: text.textContent });
-                    }
-                }
-                var fit = next.querySelector('.summary-fit');
-                if (fit) summary.fit = fit.textContent.trim();
-            }
-
             return {
                 title: titleLink ? titleLink.textContent : '',
                 url: titleLink ? titleLink.href : '',
@@ -1175,8 +986,7 @@
                           (deadlineBadge ? ' (' + deadlineBadge.textContent.trim() + ')' : ''),
                 score: row.getAttribute('data-score') || '0',
                 roles: rolesEl ? (rolesEl.getAttribute('title') || rolesEl.textContent.trim()) : '',
-                statusLine: statusLine,
-                summary: summary
+                statusLine: statusLine
             };
         }
 
@@ -1237,23 +1047,10 @@
             return html + '</table>';
         }
 
-        function listHtml(items) {
-            var html = '<ul>';
-            for (var i = 0; i < items.length; i++) {
-                html += '<li>' + esc(String(items[i])) + '</li>';
-            }
-            return html + '</ul>';
-        }
-
         function makePdf(row) {
             var d = collectRowData(row);
-            var summary = null;
-            if (row.getAttribute('data-summary')) {
-                try { summary = JSON.parse(row.getAttribute('data-summary')); } catch (e) {}
-            }
-
             var idShort = row.getAttribute('data-id') || '';
-            var body = '<h1>Management Summary &mdash; ' + esc(d.source) + ' ' + esc(idShort) + '</h1>' +
+            var body = '<h1>Ausschreibung &mdash; ' + esc(d.source) + ' ' + esc(idShort) + '</h1>' +
                 '<div class="sub"><b>Auftraggeber:</b> ' + esc(d.buyer) +
                 (d.sectorInfo ? ' (' + esc(d.sectorInfo) + ')' : '') +
                 ' &middot; <b>Ver&ouml;ffentlicht:</b> ' + esc(d.published) +
@@ -1261,82 +1058,13 @@
                 '<div class="titleline">' + esc(d.title) +
                 '<span class="scorepill">Relevanz ' + esc(d.score) + ' / 100</span></div>';
 
-            if (summary) {
-                var wasGesucht = summary.was_gesucht || summary.chance || '';
-                if (wasGesucht) {
-                    body += '<h2>Was wird gesucht?</h2><p>' + esc(wasGesucht) + '</p>';
-                }
-                if (summary.handlungsfelder && summary.handlungsfelder.length) {
-                    body += '<p class="lead">Konkrete Handlungsfelder:</p>' + listHtml(summary.handlungsfelder);
-                }
-
-                var eckdaten = {};
-                var hasEckdaten = false;
-                if (summary.eckdaten) {
-                    for (var k in summary.eckdaten) {
-                        if (summary.eckdaten.hasOwnProperty(k) && summary.eckdaten[k]) {
-                            eckdaten[k] = summary.eckdaten[k]; hasEckdaten = true;
-                        }
-                    }
-                }
-                if (d.roles) { eckdaten['Passende ReqPOOL-Rollen'] = d.roles; hasEckdaten = true; }
-                if (hasEckdaten) {
-                    body += '<h2>Eckdaten</h2>' + kvTableHtml(eckdaten);
-                }
-
-                var fristen = {};
-                var hasFristen = false;
-                if (summary.fristen) {
-                    for (var f in summary.fristen) {
-                        if (summary.fristen.hasOwnProperty(f) && summary.fristen[f]) {
-                            fristen[f] = summary.fristen[f]; hasFristen = true;
-                        }
-                    }
-                }
-                if (d.deadline && d.deadline.indexOf('–') !== 0) {
-                    var daysLeftAttr = row.getAttribute('data-days-left');
-                    var warn = daysLeftAttr !== '' && parseInt(daysLeftAttr, 10) < 7 ? ' ⚠️' : '';
-                    fristen['Frist (laut Portal)'] = d.deadline + warn;
-                    hasFristen = true;
-                }
-                if (hasFristen) {
-                    body += '<h2>Fristen</h2>' + kvTableHtml(fristen);
-                }
-
-                if (summary.zuschlagskriterien && summary.zuschlagskriterien.length) {
-                    body += '<h2>Zuschlagskriterien</h2><table>' +
-                        '<tr><th>Kriterium</th><td><b>Gewichtung</b></td></tr>';
-                    for (var z = 0; z < summary.zuschlagskriterien.length; z++) {
-                        var crit = summary.zuschlagskriterien[z];
-                        var name = Array.isArray(crit) ? crit[0] : String(crit);
-                        var weight = Array.isArray(crit) && crit.length > 1 ? crit[1] : '';
-                        body += '<tr><th>' + esc(String(name)) + '</th><td>' + esc(String(weight)) + '</td></tr>';
-                    }
-                    body += '</table>';
-                }
-
-                if (summary.eignung && summary.eignung.length) {
-                    body += '<h2>Eignungsanforderungen (Auswahl)</h2>' + listHtml(summary.eignung);
-                }
-
-                var relevanz = summary.relevanz || summary.naechster_schritt || '';
-                if (relevanz || summary.empfehlung) {
-                    body += '<h2>Relevanz f&uuml;r ReqPOOL?</h2>';
-                    if (relevanz) body += '<p>' + esc(relevanz) + '</p>';
-                    if (summary.empfehlung) body += '<p><b>Empfehlung:</b> ' + esc(summary.empfehlung) + '</p>';
-                }
-            } else {
-                // No AI summary available — plain fact sheet
-                body += '<h2>Eckdaten</h2>' + entryFactsHtml(d, false) +
-                    '<p class="hint">F&uuml;r diese Ausschreibung liegt (noch) keine KI-Summary vor. ' +
-                    'Summaries werden im t&auml;glichen Lauf f&uuml;r Eintr&auml;ge mit Relevanz &ge; 15 erzeugt.</p>';
-            }
+            body += '<h2>Eckdaten</h2>' + entryFactsHtml(d, false);
 
             if (d.url) {
                 body += '<h2>Link</h2><p><a href="' + esc(d.url) + '">' + esc(d.url) + '</a></p>';
             }
 
-            openPrintWindow('Management Summary — ' + d.title, body);
+            openPrintWindow('Ausschreibung — ' + d.title, body);
         }
 
         function initPdfButtons() {
@@ -1352,7 +1080,7 @@
         /* ---------- Filter & Sortierung ---------- */
 
         function applyFilters() {
-            var rows = document.querySelectorAll('tbody tr:not(.summary-row)');
+            var rows = document.querySelectorAll('tbody tr');
             var visibleCount = 0;
             for (var j = 0; j < rows.length; j++) {
                 var row = rows[j];
@@ -1381,16 +1109,6 @@
                 row.style.display = visible ? '' : 'none';
                 if (visible) visibleCount++;
 
-                // Hide/show associated summary row
-                var next = row.nextElementSibling;
-                if (next && next.classList.contains('summary-row')) {
-                    if (!visible) {
-                        next.classList.remove('visible');
-                        next.style.display = 'none';
-                    } else {
-                        next.style.display = '';
-                    }
-                }
             }
             var countEl = document.querySelector('.visible-count');
             if (countEl) {
@@ -1435,7 +1153,7 @@
         function doSort() {
             var tbody = document.querySelector('tbody');
             if (!tbody) return;
-            var mainRows = Array.prototype.slice.call(tbody.querySelectorAll('tr:not(.summary-row)'));
+            var mainRows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
             mainRows.sort(function(a, b) {
                 var valA, valB;
                 if (TenderScout.activeSort === 'relevance') {
@@ -1459,15 +1177,6 @@
             });
             for (var i = 0; i < mainRows.length; i++) {
                 tbody.appendChild(mainRows[i]);
-                // Re-attach summary row if it exists
-                var toggle = mainRows[i].querySelector('.summary-toggle');
-                if (toggle) {
-                    var match = toggle.getAttribute('onclick').match(/'([^']+)'/);
-                    if (match) {
-                        var summaryRow = document.getElementById(match[1]);
-                        if (summaryRow) tbody.appendChild(summaryRow);
-                    }
-                }
             }
         }
 

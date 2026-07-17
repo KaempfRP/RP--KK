@@ -79,7 +79,7 @@ pytest -m e2e       # nur E2E Tests
 
 ## Geplante Erweiterungen (nach MVP)
 
-- KI-Bewertung der Relevanz via Claude API
+- Weitere Quellen anbinden
 - Weitere Quellen (Freelancermap als Sales-Signal)
 - E-Mail-Benachrichtigung bei neuen Treffern
 - Kundeninformationen anreichern

@@ -1,7 +1,7 @@
 """Tender Scout — Main entry point.
 
 Orchestrates the full pipeline: fetch sources, deduplicate,
-score, summarize, render HTML page, and report results.
+score, render HTML page, and report results.
 """
 
 import logging
@@ -9,12 +9,8 @@ from datetime import datetime, timezone
 
 from src.ted_api import fetch_ted
 from src.rss_sources import fetch_rss_sources
-from src.dedup import (
-    init_db, filter_new, store_entries, get_all_entries,
-    get_stored_summaries, save_summaries,
-)
+from src.dedup import init_db, filter_new, store_entries, get_all_entries
 from src.scoring import score_entries
-from src.summarizer import summarize_entries
 from src.render import render_page, normalize_date_for_sort
 
 logging.basicConfig(
@@ -90,25 +86,15 @@ def main() -> None:
         len(all_stored), len(all_results),
     )
 
-    # 8. Score entries (needed before summarization)
+    # 8. Score entries
     score_entries(all_results)
 
-    # 9. Generate AI summaries for high-relevance entries
-    stored_summaries = get_stored_summaries()
-    summaries = summarize_entries(all_results, stored_summaries)
-    new_summaries = {k: v for k, v in summaries.items() if k not in stored_summaries}
-    save_summaries(new_summaries)
-    logger.info(
-        "Summaries: %d gesamt, %d neu generiert",
-        len(summaries), len(new_summaries),
-    )
-
-    # 10. Render HTML page
+    # 9. Render HTML page
     new_ids = {e["id"] for e in new_results}
-    output_path = render_page(all_results, new_ids, summaries=summaries)
+    output_path = render_page(all_results, new_ids)
     logger.info("HTML generiert: %s", output_path)
 
-    # 11. Summary
+    # 10. Summary
     logger.info(
         "Zusammenfassung: %d TED, %s — %d neu, %d offen angezeigt",
         len(ted_results),

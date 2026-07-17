@@ -1,10 +1,14 @@
 """Deduplication and persistence module using SQLite.
 
 Tracks seen tenders in data/seen.db so each tender is only marked
-"new" once, stores AI-generated summaries, and — since the page is
-no longer a rolling window — persists the full entry data so a tender
-stays visible until its deadline passes, regardless of when it was
-published or which fetch window caught it.
+"new" once and — since the page is no longer a rolling window —
+persists the full entry data so a tender stays visible until its
+deadline passes, regardless of when it was published or which fetch
+window caught it.
+
+Die Spalte `summary` stammt aus der entfernten KI-Zusammenfassung. Sie
+bleibt bestehen, weil ein Entfernen die vorhandene seen.db migrieren
+muesste; sie wird nur noch mitgeschleppt, nie gelesen.
 """
 
 import json
@@ -153,30 +157,3 @@ def get_all_seen_ids(db_path: str | None = None) -> set[str]:
         conn.close()
 
 
-def get_stored_summaries(db_path: str | None = None) -> dict[str, str]:
-    """Return dict of {id: summary} for all entries with a non-empty summary."""
-    conn = _get_connection(db_path)
-    try:
-        cursor = conn.execute(
-            "SELECT id, summary FROM seen WHERE summary != '' AND summary IS NOT NULL"
-        )
-        return {row[0]: row[1] for row in cursor.fetchall()}
-    finally:
-        conn.close()
-
-
-def save_summaries(summaries: dict[str, str], db_path: str | None = None) -> None:
-    """Update summary column for given entry IDs."""
-    if not summaries:
-        return
-
-    conn = _get_connection(db_path)
-    try:
-        for entry_id, summary in summaries.items():
-            conn.execute(
-                "UPDATE seen SET summary = ? WHERE id = ?",
-                (summary, entry_id),
-            )
-        conn.commit()
-    finally:
-        conn.close()

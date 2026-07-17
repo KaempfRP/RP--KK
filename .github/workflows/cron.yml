@@ -40,7 +40,6 @@ jobs:
 
       - name: Scout ausführen
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OEVG_DAYS: ${{ github.event.inputs.oevg_days }}
         run: python main.py
 

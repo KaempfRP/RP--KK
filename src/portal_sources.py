@@ -162,7 +162,11 @@ _DURATION_UNITS = {"MONTH": "Monate", "DAY": "Tage", "YEAR": "Jahre", "WEEK": "W
 
 
 def _extract_eforms_details(root: ET.Element) -> dict:
-    """Extract fact fields for the AI management summary from eForms XML."""
+    """Extract fact fields from eForms XML.
+
+    `beschreibung` speist das Scoring (siehe scoring.py). Die uebrigen Felder
+    stammen aus der entfernten KI-Summary und werden derzeit nur mitgefuehrt.
+    """
     details: dict[str, str] = {}
 
     # Project description: first Description inside the first ProcurementProject
