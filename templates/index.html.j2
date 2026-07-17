@@ -34,11 +34,15 @@
             --color-secondary: var(--brand-green-60);
             --color-accent-green: var(--brand-green-30);
             --color-accent-blue: var(--brand-blue-70);
-            --color-grey: var(--neutral-80);
+            /* Auf dunklem Grund: gedimmter Text hell genug zum Lesen,
+               Flaechen und Linien aus der Neutral-Rampe. */
+            --color-grey: #8ea3aa;
             --color-black: #000000;
             --color-white: #FFFFFF;
-            --color-surface: #f5f7fa;
-            --color-border: #dfe4ec;
+            --color-surface: var(--neutral-95);
+            --color-border: var(--neutral-90);
+            /* Helles Gelb fuer Text auf dunkel; #B97A00 traegt nur als Flaeche. */
+            --ampel-yellow-text: #e3b341;
 
             /* Rot/Gelb kennt die Marke nicht — die Frist-Ampel braucht sie aber.
                Gruen zieht auf den Markenton nach. */
@@ -55,8 +59,13 @@
 
         body {
             font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: var(--color-black);
-            background: #f7f9fc;
+            color: var(--neutral-10);
+            background-color: var(--neutral-98);
+            background-image:
+                radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1.5px),
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 104px 104px;
             line-height: 1.5;
         }
 
@@ -65,12 +74,6 @@
            Tabelle darunter bleibt hell: taeglicher Arbeitsplatz, Lesbarkeit
            geht vor Markenoptik. */
         .brand-top {
-            background-color: var(--neutral-98);
-            background-image:
-                radial-gradient(circle, rgba(255, 255, 255, 0.09) 1px, transparent 1.5px),
-                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-            background-size: 104px 104px;
             border-bottom: 1px solid var(--neutral-90);
             margin-bottom: 1.25rem;
         }
@@ -301,10 +304,9 @@
         .table-wrapper {
             overflow-x: auto;
             margin: 0 2rem 2rem;
-            background: var(--color-white);
-            border: 1px solid var(--color-border);
+            background: var(--neutral-95);
+            border: 1px solid var(--neutral-90);
             border-radius: var(--radius);
-            box-shadow: 0 1px 3px rgba(16, 34, 71, 0.05);
         }
 
         table {
@@ -330,7 +332,7 @@
 
         tbody td {
             padding: 0.7rem 1rem;
-            border-bottom: 1px solid #ebeff6;
+            border-bottom: 1px solid var(--neutral-90);
             vertical-align: top;
         }
 
@@ -339,7 +341,7 @@
         }
 
         tbody tr:hover {
-            background: #f4f7fd;
+            background: rgba(255, 255, 255, 0.05);
         }
 
         tr.status-verworfen td {
@@ -352,17 +354,17 @@
            tbody tr:hover ist spezifischer und ueberschreibt das hier — der
            Hover bleibt also spuerbar. */
         tr.row-frisch {
-            background: #f1fbf6;
+            background: rgba(23, 166, 105, 0.13);
         }
 
         tr.row-frisch td:first-child {
-            box-shadow: inset 3px 0 0 var(--color-secondary);
+            box-shadow: inset 3px 0 0 var(--brand-green-30);
         }
 
         .badge-neu {
             display: inline-block;
-            background: var(--color-secondary);
-            color: var(--color-white);
+            background: var(--brand-green-30);
+            color: var(--neutral-98);
             font-size: 0.7rem;
             font-weight: 700;
             padding: 0.15rem 0.55rem;
@@ -388,8 +390,8 @@
             display: inline-block;
             font-size: 0.75rem;
             font-weight: 600;
-            color: var(--color-primary-dark);
-            background: #e8edf9;
+            color: var(--neutral-10);
+            background: var(--neutral-90);
             border-radius: var(--radius);
             padding: 0.1rem 0.45rem;
             white-space: nowrap;
@@ -404,7 +406,7 @@
         }
 
         a {
-            color: var(--color-accent-blue);
+            color: var(--brand-blue-40);
             text-decoration: none;
         }
 
@@ -415,11 +417,11 @@
         .link-btn {
             display: inline-block;
             padding: 0.25rem 0.75rem;
-            background: var(--color-accent-blue);
+            background: var(--brand-blue-btn);
             color: var(--color-white);
             border-radius: var(--radius);
             font-size: 0.8rem;
-            font-weight: 500;
+            font-weight: 600;
             text-decoration: none;
             margin-bottom: 0.25rem;
         }
@@ -432,9 +434,9 @@
         .pdf-btn {
             display: inline-block;
             padding: 0.25rem 0.6rem;
-            background: var(--color-white);
-            color: var(--color-primary);
-            border: 1px solid var(--color-primary);
+            background: transparent;
+            color: var(--neutral-10);
+            border: 1px solid var(--neutral-80);
             border-radius: var(--radius);
             font-size: 0.75rem;
             font-weight: 600;
@@ -444,8 +446,9 @@
         }
 
         .pdf-btn:hover {
-            background: var(--color-primary);
-            color: var(--color-white);
+            background: var(--color-white);
+            color: var(--neutral-98);
+            border-color: var(--color-white);
         }
 
         /* Relevance */
@@ -457,7 +460,7 @@
             display: inline-block;
             width: 50px;
             height: 6px;
-            background: var(--color-border);
+            background: var(--neutral-80);
             border-radius: var(--radius);
             vertical-align: middle;
             margin-right: 0.3rem;
@@ -477,7 +480,7 @@
         .relevance-score {
             font-size: 0.75rem;
             font-weight: 600;
-            color: var(--color-primary);
+            color: var(--brand-blue-40);
             vertical-align: middle;
         }
 
@@ -516,9 +519,9 @@
         .deadline-yellow { background: var(--ampel-yellow); }
         .deadline-green { background: var(--ampel-green); }
         .deadline-expired {
-            background: var(--color-surface);
+            background: transparent;
             color: var(--color-grey);
-            border: 1px solid var(--color-border);
+            border: 1px solid var(--neutral-80);
         }
         .deadline-none {
             color: var(--color-grey);
@@ -542,16 +545,18 @@
             font-weight: 600;
             padding: 0.2rem 0.3rem;
             border-radius: var(--radius);
-            border: 1px solid var(--color-border);
+            border: 1px solid var(--neutral-80);
             cursor: pointer;
-            background: var(--color-white);
-            color: var(--color-black);
+            background: var(--neutral-95);
+            color: var(--neutral-10);
         }
 
-        .status-select.st-neu { border-color: var(--color-primary); color: var(--color-primary); }
+        /* Statusfarben in den hellen Tonstufen — die dunklen Markentoene
+           (#002eb1, #B97A00) tragen auf dunklem Grund nicht als Text. */
+        .status-select.st-neu { border-color: var(--brand-blue-40); color: var(--brand-blue-40); }
         .status-select.st-geprueft { border-color: var(--brand-blue-70); color: var(--brand-blue-70); }
-        .status-select.st-weitergeleitet { border-color: var(--ampel-yellow); color: var(--ampel-yellow); }
-        .status-select.st-beworben { border-color: var(--ampel-green); color: var(--ampel-green); background: #edfaf3; }
+        .status-select.st-weitergeleitet { border-color: var(--ampel-yellow-text); color: var(--ampel-yellow-text); }
+        .status-select.st-beworben { border-color: var(--brand-green-30); color: var(--brand-green-30); }
         .status-select.st-verworfen { border-color: var(--color-grey); color: var(--color-grey); }
 
         .status-meta {
@@ -566,12 +571,11 @@
         }
 
         .footer {
-            background: var(--color-surface);
             color: var(--color-grey);
             text-align: center;
             padding: 1rem 2rem;
             font-size: 0.8rem;
-            border-top: 1px solid var(--color-border);
+            border-top: 1px solid var(--neutral-90);
         }
 
         .empty-state {
