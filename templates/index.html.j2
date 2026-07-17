@@ -286,6 +286,19 @@
             opacity: 0.45;
         }
 
+        /* Top-Treffer des Tages: neu, heute veroeffentlicht, hoechste Relevanz.
+           Gruen statt blau, damit es sich nicht mit dem blauen Hover beisst und
+           an das NEU-Badge anschliesst, das diese Zeilen ohnehin tragen.
+           tbody tr:hover ist spezifischer und ueberschreibt das hier — der
+           Hover bleibt also spuerbar. */
+        tr.row-frisch {
+            background: #f1fbf6;
+        }
+
+        tr.row-frisch td:first-child {
+            box-shadow: inset 3px 0 0 var(--color-secondary);
+        }
+
         .badge-neu {
             display: inline-block;
             background: var(--color-secondary);
@@ -791,7 +804,7 @@
             </thead>
             <tbody>
                 {% for entry in all_entries %}
-                <tr data-id="{{ entry.id }}"
+                <tr{% if entry.id in highlight_ids | default([]) %} class="row-frisch"{% endif %} data-id="{{ entry.id }}"
                     data-source="{{ entry.source }}"
                     data-sector="{{ entry.sector | default('Sonstige') }}"
                     data-score="{{ entry.relevance_score }}"

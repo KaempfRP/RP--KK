@@ -133,6 +133,23 @@ def render_page(
         reverse=True,
     )
 
+    # Top-Treffer des Tages: neu entdeckt UND heute veroeffentlicht. Ein Eintrag,
+    # der zwar neu fuer uns, aber aelter ausgeschrieben ist, zaehlt nicht — sonst
+    # waere die Hervorhebung nur ein zweites NEU-Badge.
+    # sorted_entries ist bereits nach Relevanz absteigend, die ersten drei sind
+    # also die relevantesten. Score 0 bleibt aussen vor: ohne Relevanz waere
+    # "Top-Treffer" irrefuehrend, und der Min-Relevanz-Filter blendet solche
+    # Eintraege ohnehin standardmaessig aus.
+    today_iso = today.isoformat()
+    todays_fresh = [
+        e
+        for e in sorted_entries
+        if e["id"] in new_ids
+        and e.get("published_iso", "").startswith(today_iso)
+        and e.get("relevance_score", 0) > 0
+    ]
+    highlight_ids = {e["id"] for e in todays_fresh[:3]}
+
     sources = sorted({e["source"] for e in all_entries})
     sectors = sorted({e.get("sector", "Sonstige") for e in all_entries})
 
@@ -146,6 +163,7 @@ def render_page(
     html = template.render(
         all_entries=sorted_entries,
         new_ids=new_ids,
+        highlight_ids=highlight_ids,
         updated_at=updated_at,
         sources=sources,
         sectors=sectors,
