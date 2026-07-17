@@ -6,22 +6,45 @@
     <title>ReqPOOL Ausschreibungs-Scout</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ---------- ReqPOOL Design-Tokens ----------
+           Werte 1:1 aus dem Token-System von reqpool.com uebernommen, nicht
+           nachempfunden. Darunter die semantischen Namen, die der Rest der
+           Seite benutzt — so bleibt eine Farbaenderung eine Ein-Zeilen-Sache. */
         :root {
-            --color-primary: #002EB1;
-            --color-primary-dark: #001F78;
-            --color-secondary: #12855A;
-            --color-accent-green: #63F185;
-            --color-accent-blue: #0D4FC4;
-            --color-grey: #44585E;
+            --brand-blue-90: #002eb1;   /* primary   */
+            --brand-blue-70: #1464f4;   /* secondary, Akzent, Links */
+            --brand-blue-40: #70a3fe;
+            --brand-blue-btn: #377bf6;
+            --brand-green-60: #17a669;  /* primary   */
+            --brand-green-30: #63f185;  /* Akzent    */
+
+            --neutral-98: #101416;      /* dunkelste Flaeche (Kopf, Toolbar) */
+            --neutral-95: #131a1c;
+            --neutral-90: #223034;
+            --neutral-80: #3c4d52;
+            --neutral-70: #556d73;
+            --neutral-10: #ebf0f2;
+
+            --radius: 4px;              /* ReqPOOL ist kantig, keine Pillen */
+
+            --color-primary: var(--brand-blue-90);
+            --color-primary-dark: #001f78;
+            --color-secondary: var(--brand-green-60);
+            --color-accent-green: var(--brand-green-30);
+            --color-accent-blue: var(--brand-blue-70);
+            --color-grey: var(--neutral-80);
             --color-black: #000000;
             --color-white: #FFFFFF;
             --color-surface: #f5f7fa;
             --color-border: #dfe4ec;
+
+            /* Rot/Gelb kennt die Marke nicht — die Frist-Ampel braucht sie aber.
+               Gruen zieht auf den Markenton nach. */
             --ampel-red: #C22F2F;
             --ampel-yellow: #B97A00;
-            --ampel-green: #12855A;
+            --ampel-green: var(--brand-green-60);
         }
 
         * {
@@ -31,14 +54,17 @@
         }
 
         body {
-            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif;
             color: var(--color-black);
             background: #f7f9fc;
             line-height: 1.5;
         }
 
+        /* Kopf und Toolbar in Markendunkel, die Tabelle bleibt hell: die Marke
+           ist eindeutig erkennbar, ohne dass 520 Zeilen Fliesstext auf dunklem
+           Grund gelesen werden muessen. */
         .header {
-            background: linear-gradient(120deg, var(--color-primary-dark) 0%, var(--color-primary) 55%, #0A45C2 100%);
+            background: var(--neutral-98);
             color: var(--color-white);
             padding: 1.5rem 2rem;
             display: flex;
@@ -71,19 +97,20 @@
             opacity: 0.8;
         }
 
+        /* Gehoert zur dunklen Markenflaeche — Kopf, Stats und Toolbar bilden
+           einen Block, darunter beginnt die helle Tabelle. */
         .stats {
-            background: var(--color-white);
-            padding: 1rem 2rem;
+            background: var(--neutral-98);
+            padding: 0 2rem 1rem;
             display: flex;
             gap: 2rem;
             align-items: center;
             flex-wrap: wrap;
-            border-bottom: 1px solid var(--color-border);
         }
 
         .stat-item {
             font-size: 0.95rem;
-            color: var(--color-grey);
+            color: var(--neutral-10);
             display: flex;
             align-items: center;
             gap: 0.4rem;
@@ -94,34 +121,33 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: var(--color-primary);
+            background: var(--brand-blue-70);
             flex-shrink: 0;
         }
 
         .stat-item.stat-new::before {
-            background: var(--color-secondary);
+            background: var(--brand-green-30);
         }
 
         .stat-item strong {
-            color: var(--color-primary);
+            color: var(--brand-blue-40);
             font-weight: 600;
         }
 
         .stat-new strong {
-            color: var(--color-secondary);
+            color: var(--brand-green-30);
         }
 
-        /* Toolbar */
+        /* Toolbar — Teil der dunklen Markenflaeche, wie der Kopf. Kein
+           schwebender Kasten: Kopf, Stats und Toolbar gehen ineinander ueber. */
         .toolbar {
-            margin: 1.25rem 2rem;
-            padding: 1rem 1.25rem;
+            margin: 0 0 1.25rem;
+            padding: 1rem 2rem 1.5rem;
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
-            background: var(--color-white);
-            border: 1px solid var(--color-border);
-            border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(16, 34, 71, 0.05);
+            background: var(--neutral-98);
+            border-bottom: 1px solid var(--neutral-90);
         }
 
         .toolbar-row {
@@ -135,33 +161,40 @@
         .toolbar-label {
             font-size: 0.85rem;
             font-weight: 600;
-            color: var(--color-grey);
+            color: var(--neutral-10);
             margin-right: 0.25rem;
         }
 
         .search-input {
-            border: 1px solid var(--color-primary);
-            border-radius: 4px;
+            border: 1px solid var(--neutral-80);
+            border-radius: var(--radius);
             padding: 0.5rem 1rem;
             width: 100%;
             max-width: 400px;
             font-family: inherit;
             font-size: 0.9rem;
             outline: none;
+            background: var(--neutral-98);
+            color: var(--color-white);
+        }
+
+        .search-input::placeholder {
+            color: var(--neutral-70);
         }
 
         .search-input:focus {
-            box-shadow: 0 0 0 2px rgba(0, 46, 177, 0.2);
+            border-color: var(--brand-blue-70);
+            box-shadow: 0 0 0 2px rgba(20, 100, 244, 0.35);
         }
 
         .search-clear {
             background: none;
-            border: 1px solid var(--color-border);
-            border-radius: 4px;
+            border: 1px solid var(--neutral-80);
+            border-radius: var(--radius);
             padding: 0.5rem 0.75rem;
             cursor: pointer;
             font-size: 0.85rem;
-            color: var(--color-grey);
+            color: var(--neutral-10);
             font-family: inherit;
             display: none;
         }
@@ -172,38 +205,40 @@
 
         .filter-btn, .sort-btn {
             padding: 0.35rem 0.9rem;
-            border: 1px solid #c3cde4;
-            background: var(--color-white);
-            color: var(--color-primary);
-            border-radius: 999px;
+            border: 1px solid var(--neutral-80);
+            background: transparent;
+            color: var(--color-white);
+            border-radius: var(--radius);
             cursor: pointer;
             font-family: inherit;
             font-size: 0.8rem;
-            font-weight: 500;
+            font-weight: 600;
             transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
 
         .filter-btn:hover, .sort-btn:hover {
-            border-color: var(--color-primary);
-            background: #eef2fb;
+            border-color: var(--color-white);
         }
 
+        /* Aktiv = Marken-Button-Blau, wie die CTAs auf reqpool.com */
         .filter-btn.active, .sort-btn.active {
-            background: var(--color-primary);
-            border-color: var(--color-primary);
+            background: var(--brand-blue-btn);
+            border-color: var(--brand-blue-btn);
             color: var(--color-white);
         }
 
         .sync-indicator {
             font-size: 0.75rem;
-            color: var(--color-grey);
+            color: var(--neutral-70);
             margin-left: 0.5rem;
             white-space: nowrap;
         }
 
-        .sync-indicator.sync-ok { color: var(--ampel-green); }
-        .sync-indicator.sync-error { color: var(--ampel-red); }
-        .sync-indicator.sync-offline { color: var(--color-grey); }
+        /* Auf dunklem Grund brauchen Statusfarben die hellen Akzenttoene —
+           das dunkle Markengruen ginge hier optisch unter. */
+        .sync-indicator.sync-ok { color: var(--brand-green-30); }
+        .sync-indicator.sync-error { color: #ff8a8a; }
+        .sync-indicator.sync-offline { color: var(--neutral-70); }
 
         /* Min-Relevanz-Slider */
         .score-slider-wrap {
@@ -214,13 +249,13 @@
 
         .score-slider {
             width: 140px;
-            accent-color: var(--color-primary);
+            accent-color: var(--brand-blue-70);
         }
 
         .score-slider-value {
             font-size: 0.8rem;
             font-weight: 600;
-            color: var(--color-primary);
+            color: var(--brand-blue-40);
             min-width: 2.5rem;
         }
 
@@ -229,17 +264,17 @@
             align-items: center;
             gap: 0.35rem;
             font-size: 0.85rem;
-            color: var(--color-grey);
+            color: var(--neutral-10);
             cursor: pointer;
             user-select: none;
         }
 
         .toggle-expired input {
-            accent-color: var(--color-primary);
+            accent-color: var(--brand-blue-70);
         }
 
         .visible-count {
-            color: var(--color-grey);
+            color: var(--neutral-70);
             font-size: 0.85rem;
             margin-left: auto;
         }
@@ -250,7 +285,7 @@
             margin: 0 2rem 2rem;
             background: var(--color-white);
             border: 1px solid var(--color-border);
-            border-radius: 10px;
+            border-radius: var(--radius);
             box-shadow: 0 1px 3px rgba(16, 34, 71, 0.05);
         }
 
@@ -313,7 +348,7 @@
             font-size: 0.7rem;
             font-weight: 700;
             padding: 0.15rem 0.55rem;
-            border-radius: 999px;
+            border-radius: var(--radius);
             text-transform: uppercase;
             margin-left: 0.5rem;
             vertical-align: middle;
@@ -326,7 +361,7 @@
             font-size: 0.65rem;
             font-weight: 700;
             padding: 0.1rem 0.4rem;
-            border-radius: 3px;
+            border-radius: var(--radius);
             margin-left: 0.3rem;
             vertical-align: middle;
         }
@@ -337,7 +372,7 @@
             font-weight: 600;
             color: var(--color-primary-dark);
             background: #e8edf9;
-            border-radius: 3px;
+            border-radius: var(--radius);
             padding: 0.1rem 0.45rem;
             white-space: nowrap;
         }
@@ -364,7 +399,7 @@
             padding: 0.25rem 0.75rem;
             background: var(--color-accent-blue);
             color: var(--color-white);
-            border-radius: 3px;
+            border-radius: var(--radius);
             font-size: 0.8rem;
             font-weight: 500;
             text-decoration: none;
@@ -382,7 +417,7 @@
             background: var(--color-white);
             color: var(--color-primary);
             border: 1px solid var(--color-primary);
-            border-radius: 3px;
+            border-radius: var(--radius);
             font-size: 0.75rem;
             font-weight: 600;
             cursor: pointer;
@@ -405,7 +440,7 @@
             width: 50px;
             height: 6px;
             background: var(--color-border);
-            border-radius: 3px;
+            border-radius: var(--radius);
             vertical-align: middle;
             margin-right: 0.3rem;
         }
@@ -413,7 +448,7 @@
         .relevance-fill {
             display: block;
             height: 100%;
-            border-radius: 3px;
+            border-radius: var(--radius);
             background: var(--color-secondary);
         }
 
@@ -454,7 +489,7 @@
             font-size: 0.72rem;
             font-weight: 700;
             padding: 0.12rem 0.55rem;
-            border-radius: 999px;
+            border-radius: var(--radius);
             color: var(--color-white);
             margin-bottom: 0.15rem;
         }
@@ -488,7 +523,7 @@
             font-size: 0.78rem;
             font-weight: 600;
             padding: 0.2rem 0.3rem;
-            border-radius: 4px;
+            border-radius: var(--radius);
             border: 1px solid var(--color-border);
             cursor: pointer;
             background: var(--color-white);
@@ -496,7 +531,7 @@
         }
 
         .status-select.st-neu { border-color: var(--color-primary); color: var(--color-primary); }
-        .status-select.st-geprueft { border-color: #6A41B5; color: #6A41B5; }
+        .status-select.st-geprueft { border-color: var(--brand-blue-70); color: var(--brand-blue-70); }
         .status-select.st-weitergeleitet { border-color: var(--ampel-yellow); color: var(--ampel-yellow); }
         .status-select.st-beworben { border-color: var(--ampel-green); color: var(--ampel-green); background: #edfaf3; }
         .status-select.st-verworfen { border-color: var(--color-grey); color: var(--color-grey); }
@@ -984,12 +1019,12 @@
             'h1{font-size:1.25rem;color:#002EB1;margin-bottom:0.25rem;}' +
             'h2{font-size:1.05rem;color:#002EB1;margin:1.5rem 0 0.5rem;page-break-after:avoid;}' +
             '.sub{color:#44585E;font-size:0.85rem;margin-bottom:1.25rem;}' +
-            '.scorepill{display:inline-block;background:#002EB1;color:#fff;font-weight:700;border-radius:999px;padding:0.15rem 0.75rem;font-size:0.85rem;margin-left:0.5rem;vertical-align:middle;}' +
+            '.scorepill{display:inline-block;background:#002EB1;color:#fff;font-weight:700;border-radius:4px;padding:0.15rem 0.75rem;font-size:0.85rem;margin-left:0.5rem;vertical-align:middle;}' +
             'table{border-collapse:collapse;width:100%;font-size:0.9rem;}' +
             'th{text-align:left;padding:0.45rem 1rem 0.45rem 0;color:#44585E;white-space:nowrap;vertical-align:top;width:10rem;font-weight:600;}' +
             'td{padding:0.45rem 0;vertical-align:top;}' +
             'tr{border-bottom:1px solid #dfe4ec;}' +
-            'a{color:#0D4FC4;word-break:break-all;}' +
+            'a{color:#1464f4;word-break:break-all;}' +
             'p{margin:0.35rem 0;font-size:0.92rem;}' +
             '.titleline{font-size:1.05rem;font-weight:600;margin:0.75rem 0 0.25rem;padding-bottom:0.6rem;border-bottom:2px solid #002EB1;}' +
             '.lead{margin-top:0.75rem;font-weight:600;}' +
